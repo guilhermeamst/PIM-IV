@@ -1,0 +1,177 @@
+@*
+    =====================================================================
+    DC12 / DS12 - PERFIL DO USUARIO COM O HISTORICO DE ACOES
+
+    E o FrmPerfilUsuario do desktop, que nasceu nesta versao. A
+    sequencia do diagrama:
+
+        realizarBuscarPerfil(admin, usuario)
+        verificarPermissaoAdmin(admin)
+        solicitarVisualizacaoPerfil(usuario)
+        elegivelParaVisualizacao(true)
+        buscarDadosUsuario(usuario)
+        dadosUsuario(nome, email, papel, dataCadastro)
+        buscarHistoricoAcoes(usuario)
+        historicoAcoes(loginLog, acoesCrud, cursosRelacionados)
+        perfilCompleto(dadosEHistorico)
+        exibirPerfilUsuario(dadosEHistorico)
+
+    POR QUE TRES LISTAS E NAO UMA: o modelo nomeia os tres conjuntos
+    separadamente. Por isso a tabela dbo.LogAcoes tem a coluna Tipo,
+    com os valores LOGIN, CRUD e CURSO, e a pagina mostra uma lista
+    para cada um.
+    =====================================================================
+*@
+@model PerfilUsuarioViewModel
+@{
+    ViewData["Title"] = "Perfil de " + Model.afr_Usuario.afr_Nome;
+
+    string afr_classeEtiqueta = "etiqueta-aluno";
+
+    if (Model.afr_Usuario.EhAdministrador())
+    {
+        afr_classeEtiqueta = "etiqueta-admin";
+    }
+    else if (Model.afr_Usuario.EhProfessor())
+    {
+        afr_classeEtiqueta = "etiqueta-professor";
+    }
+}
+
+<p class="subtitulo" style="margin-bottom:6px;">
+    <a asp-controller="Usuarios" asp-action="Index">&larr; Voltar para a lista</a>
+</p>
+
+<h1>@Model.afr_Usuario.afr_Nome</h1>
+
+@* ---------------------------------------------------------------- *@
+@* DS12 - dadosUsuario(nome, email, papel, dataCadastro)             *@
+@* ---------------------------------------------------------------- *@
+<p class="subtitulo">
+    @Model.afr_Usuario.afr_Email &middot;
+    <span class="etiqueta @afr_classeEtiqueta">@Model.afr_Usuario.afr_Perfil</span>
+    &middot;
+    @if (Model.afr_Usuario.afr_Ativo)
+    {
+        <span class="etiqueta etiqueta-ativo">Ativo</span>
+    }
+    else
+    {
+        <span class="etiqueta etiqueta-inativo">Inativo</span>
+    }
+    @if (Model.afr_Usuario.afr_DataCadastro > DateTime.MinValue)
+    {
+        <text>&middot; cadastro em <time datetime="@Model.afr_Usuario.afr_DataCadastro.ToString("yyyy-MM-ddTHH:mm")">@Model.afr_Usuario.afr_DataCadastro.ToString("dd/MM/yyyy HH:mm")</time></text>
+    }
+</p>
+
+<dl class="grade grade-3 numeros" style="margin-bottom:24px;">
+    <div class="cartao">
+        <dt class="numero-rotulo">acesso(s) registrado(s)</dt>
+        <dd class="numero">@Model.afr_LoginLog.Count</dd>
+    </div>
+
+    <div class="cartao">
+        <dt class="numero-rotulo">cadastro(s) feito(s)</dt>
+        <dd class="numero">@Model.afr_AcoesCrud.Count</dd>
+    </div>
+
+    <div class="cartao">
+        <dt class="numero-rotulo">acao(oes) em cursos</dt>
+        <dd class="numero">@Model.afr_CursosRelacionados.Count</dd>
+    </div>
+</dl>
+
+@* ---------------------------------------------------------------- *@
+@* DS12 - historicoAcoes(loginLog, acoesCrud, cursosRelacionados)    *@
+@* ---------------------------------------------------------------- *@
+<h2>Historico de acoes</h2>
+
+@if (Model.ContarTudo() == 0)
+{
+    <div class="cartao vazio">
+        <p>
+            Este usuario ainda nao tem nenhuma acao registrada.<br />
+            O historico comeca a encher a partir do primeiro login dele.
+        </p>
+    </div>
+}
+else
+{
+    <div class="historico">
+
+        @* -------- loginLog -------- *@
+        <section class="cartao">
+            <h3>Acessos <span class="ajuda">(loginLog)</span></h3>
+
+            @if (Model.afr_LoginLog.Count == 0)
+            {
+                <p class="ajuda">Sem registros.</p>
+            }
+            else
+            {
+                <ul class="lista-log">
+                    @foreach (LogAcao afr_registro in Model.afr_LoginLog)
+                    {
+                        <li>
+                            <time class="quando" datetime="@afr_registro.afr_DataHora.ToString("yyyy-MM-ddTHH:mm")">@afr_registro.afr_DataHora.ToString("dd/MM/yyyy HH:mm")</time>
+                            @afr_registro.afr_Descricao
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        @* -------- acoesCrud -------- *@
+        <section class="cartao">
+            <h3>Cadastros <span class="ajuda">(acoesCrud)</span></h3>
+
+            @if (Model.afr_AcoesCrud.Count == 0)
+            {
+                <p class="ajuda">Sem registros.</p>
+            }
+            else
+            {
+                <ul class="lista-log">
+                    @foreach (LogAcao afr_registro in Model.afr_AcoesCrud)
+                    {
+                        <li>
+                            <time class="quando" datetime="@afr_registro.afr_DataHora.ToString("yyyy-MM-ddTHH:mm")">@afr_registro.afr_DataHora.ToString("dd/MM/yyyy HH:mm")</time>
+                            @afr_registro.afr_Descricao
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        @* -------- cursosRelacionados -------- *@
+        <section class="cartao">
+            <h3>Cursos <span class="ajuda">(cursosRelacionados)</span></h3>
+
+            @if (Model.afr_CursosRelacionados.Count == 0)
+            {
+                <p class="ajuda">Sem registros.</p>
+            }
+            else
+            {
+                <ul class="lista-log">
+                    @foreach (LogAcao afr_registro in Model.afr_CursosRelacionados)
+                    {
+                        <li>
+                            <time class="quando" datetime="@afr_registro.afr_DataHora.ToString("yyyy-MM-ddTHH:mm")">@afr_registro.afr_DataHora.ToString("dd/MM/yyyy HH:mm")</time>
+                            @afr_registro.afr_Descricao
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+    </div>
+}
+
+<div class="acoes">
+    <a class="botao botao-primario" asp-controller="Usuarios" asp-action="Editar"
+       asp-route-id="@Model.afr_Usuario.afr_Id">Editar este usuario</a>
+
+    <a class="botao" asp-controller="Usuarios" asp-action="Index">Voltar para a lista</a>
+</div>

@@ -1,0 +1,231 @@
+@*
+    =====================================================================
+    Painel principal, equivalente ao FrmPrincipal do desktop.
+
+    TRES AREAS, uma por ator dos diagramas de sequencia:
+      Aluno .. catalogo e as proprias aulas
+      Professor .. cursos e aulas, e o progresso dos alunos
+      Admin .. usuarios
+
+    Cada area so aparece para quem tem a permissao. As propriedades
+    afr_PodeGerenciarCursos, afr_PodeVerProgresso e
+    afr_PodeGerenciarUsuarios vem dos metodos da classe Usuario - os
+    mesmos que o desktop usa para mostrar ou esconder os GroupBox.
+    =====================================================================
+*@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Painel";
+
+    string afr_classeEtiqueta = "etiqueta-aluno";
+
+    if (Model.afr_EhAdmin)
+    {
+        afr_classeEtiqueta = "etiqueta-admin";
+    }
+    else if (Model.afr_EhProfessor)
+    {
+        afr_classeEtiqueta = "etiqueta-professor";
+    }
+
+    // VERSAO 4 - so o aluno faz curso e ganha XP (decisao do grupo).
+    // Professor e admin acompanham os cursos, entao o painel de XP e o
+    // "cursos que voce concluiu" nao fazem sentido para eles.
+    bool afr_ehAluno = !Model.afr_EhAdmin && !Model.afr_EhProfessor;
+}
+
+<h1>Ola, @Model.afr_Nome</h1>
+<p class="subtitulo">
+    @Model.afr_Email &middot;
+    <span class="etiqueta @afr_classeEtiqueta">@Model.afr_Perfil</span>
+    @if (Model.afr_DataCadastro > DateTime.MinValue)
+    {
+        <text>&middot; cadastro em <time datetime="@Model.afr_DataCadastro.ToString("yyyy-MM-dd")">@Model.afr_DataCadastro.ToString("dd/MM/yyyy")</time></text>
+    }
+</p>
+
+<p class="aviso aviso-info" role="status">@Model.DescreverPerfil()</p>
+
+@* ---------------------------------------------------------------- *@
+@* NUMEROS DO SISTEMA                                                *@
+@* ---------------------------------------------------------------- *@
+<dl class="grade grade-3 numeros" style="margin-bottom:24px;">
+    <div class="cartao">
+        <dt class="numero-rotulo">curso(s) disponivel(is)</dt>
+        <dd class="numero">@Model.afr_TotalCursos</dd>
+    </div>
+
+    @if (afr_ehAluno)
+    {
+        <div class="cartao">
+            <dt class="numero-rotulo">cursos que voce concluiu</dt>
+            <dd class="numero">@Model.afr_MeusConcluidos / @Model.afr_MeusCursos</dd>
+        </div>
+    }
+
+    @if (Model.afr_PodeGerenciarUsuarios)
+    {
+        <div class="cartao">
+            <dt class="numero-rotulo">usuario(s) cadastrado(s)</dt>
+            <dd class="numero">@Model.afr_TotalUsuarios</dd>
+        </div>
+    }
+</dl>
+
+@* ---------------------------------------------------------------- *@
+@* VERSAO 3 - PAINEL DE GAMIFICACAO                                  *@
+@*                                                                   *@
+@* VERSAO 4 - aparece so para o ALUNO: professor e admin nao cursam  *@
+@* nem ganham XP. Para quem nunca concluiu nada mostra o nivel        *@
+@* 1 com a barra zerada, em vez de esconder o painel - o aluno        *@
+@* precisa ver que existe algo a conquistar.                          *@
+@*                                                                   *@
+@* As variaveis sao montadas ANTES do HTML de proposito: expressao    *@
+@* de varias linhas dentro de atributo Razor da problema.             *@
+@* ---------------------------------------------------------------- *@
+@{
+    var afr_pontuacao = Model.afr_Pontuacao;
+    int afr_percentual = afr_pontuacao.ObterPercentualDoNivel();
+
+    // VERSAO 3.1 - a lista ja vem do banco com o CATALOGO inteiro e a
+    // marca de quais o aluno tem, entao nao ha mais o que montar aqui.
+    var afr_todasConquistas = afr_pontuacao.afr_Conquistas;
+}
+
+@if (afr_ehAluno)
+{
+    <section class="cartao painel-xp" style="margin-bottom:24px;" aria-label="Sua pontuacao">
+        <header class="xp-topo">
+            <div>
+                <p class="xp-nivel">
+                    Nivel @afr_pontuacao.ObterNivel() &mdash; @afr_pontuacao.ObterTituloDoNivel()
+                </p>
+                <p class="xp-detalhe">
+                    @afr_pontuacao.afr_XpTotal XP &nbsp;|&nbsp;
+                    faltam @afr_pontuacao.ObterXpParaProximoNivel()
+                    para o nivel @(afr_pontuacao.ObterNivel() + 1)
+                </p>
+
+                @* VERSAO 3.1 - sequencia de dias seguidos, vinda da API.
+                   So a partir de 2 dias: "1 dia seguido" nao e sequencia. *@
+                @if (afr_pontuacao.afr_SequenciaAtual >= 2)
+                {
+                    <p class="xp-sequencia">
+                        @afr_pontuacao.afr_SequenciaAtual dias seguidos
+                        <span class="xp-recorde">
+                            (recorde: @afr_pontuacao.afr_MelhorSequencia)
+                        </span>
+                    </p>
+                }
+            </div>
+
+            <p class="xp-contagem">
+                @afr_pontuacao.afr_AulasConcluidas aula(s) &middot;
+                @afr_pontuacao.afr_CursosConcluidos curso(s)
+            </p>
+        </header>
+
+        <progress class="xp-barra" max="100" value="@afr_percentual"
+                  aria-label="Progresso ate o proximo nivel">@afr_percentual%</progress>
+
+        @* As conquistas que faltam aparecem apagadas, nao escondidas:   *@
+        @* saber o que da para ganhar e metade da graca.                 *@
+        <ul class="xp-conquistas">
+            @foreach (var afr_medalha in afr_todasConquistas)
+            {
+                @* O titulo mostra a descricao e quanto XP a medalha vale,
+                   tanto nas ganhas quanto nas que faltam. *@
+                string afr_classe = afr_medalha.afr_Conquistada
+                    ? "medalha medalha-ganha"
+                    : "medalha medalha-falta";
+
+                string afr_dica = afr_medalha.afr_Descricao +
+                                  " (+" + afr_medalha.afr_XpBonus + " XP)";
+
+                <li class="@afr_classe" title="@afr_dica">
+                    @afr_medalha.afr_Icone @afr_medalha.afr_Nome
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+<div class="grade grade-2">
+
+    @* ------------------------------------------------------------ *@
+    @* AREA DO ALUNO - todo mundo tem                                *@
+    @* ------------------------------------------------------------ *@
+    <section class="cartao">
+        <h3>Area do Aluno</h3>
+        <p class="ajuda">
+            Veja os cursos, use os filtros da busca, abra o conteudo das
+            aulas e marque o que ja concluiu.
+        </p>
+        <div class="acoes">
+            <a asp-controller="Catalogo" asp-action="Index"
+               class="botao botao-primario">Abrir o catalogo</a>
+        </div>
+    </section>
+
+    @* ------------------------------------------------------------ *@
+    @* AREA DO PROFESSOR - professor e admin                                 *@
+    @* DS07 a DS10: a linha de vida desses diagramas e o Professor        *@
+    @* ------------------------------------------------------------ *@
+    @if (Model.afr_PodeGerenciarCursos)
+    {
+        <section class="cartao">
+            <h3>Area do Professor</h3>
+            <p class="ajuda">
+                Cadastre cursos e aulas, escreva o conteudo de cada aula
+                e acompanhe o andamento dos alunos.
+            </p>
+            <div class="acoes">
+                <a asp-controller="Cursos" asp-action="Index"
+                   class="botao botao-primario">Cursos e aulas</a>
+
+                @if (Model.afr_PodeVerProgresso)
+                {
+                    <a asp-controller="Progresso" asp-action="Index"
+                       class="botao">Progresso dos alunos</a>
+                }
+            </div>
+        </section>
+    }
+
+    @* ------------------------------------------------------------ *@
+    @* AREA DE ADMINISTRACAO - so o admin                            *@
+    @* ------------------------------------------------------------ *@
+    @if (Model.afr_PodeGerenciarUsuarios)
+    {
+        <section class="cartao">
+            <h3>Administracao</h3>
+            <p class="ajuda">
+                Cadastre, edite e exclua usuarios, e consulte o perfil de
+                cada um com o historico de acoes.
+            </p>
+            <div class="acoes">
+                <a asp-controller="Usuarios" asp-action="Index"
+                   class="botao botao-primario">Usuarios</a>
+            </div>
+        </section>
+    }
+
+</div>
+
+@* ---------------------------------------------------------------- *@
+@* SITUACAO DO BANCO DE DADOS                                        *@
+@* ---------------------------------------------------------------- *@
+<section class="cartao" style="margin-top:18px;">
+    <h3>Banco de dados</h3>
+    <p class="ajuda">@Model.afr_StatusBanco</p>
+    <p class="ajuda">
+        Seis tabelas: Usuarios, Cursos, Aulas, Progresso,
+        CodigosRecuperacao (DS02) e LogAcoes (DS12).
+    </p>
+
+    <div class="acoes">
+        <form asp-controller="Home" asp-action="TestarConexao" method="get">
+            <button type="submit" class="botao botao-pequeno">Testar conexao</button>
+        </form>
+    </div>
+</section>

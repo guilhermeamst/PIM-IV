@@ -1,0 +1,132 @@
+@*
+    =====================================================================
+    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
+    Arquivo: Views/Shared/_Layout.cshtml
+    ---------------------------------------------------------------------
+    O LAYOUT e a moldura de todas as paginas: barra do topo, menu,
+    faixas de aviso e rodape. Cada pagina preenche so o miolo, pelo
+    @@RenderBody(). No desktop isso nao existia - cada formulario
+    repetia o seu proprio cabecalho.
+
+    O MENU MUDA CONFORME O PERFIL, igual ao FrmPrincipal do desktop.
+    Nesta versao existem TRES perfis, por causa dos atores dos
+    diagramas de sequencia:
+
+        ALUNO  ve Painel e Catalogo
+        PROFESSOR  ve tambem Cursos e Progresso
+        ADMIN  ve tambem Usuarios
+
+    Quem decide e a classe Usuario (PodeGerenciarCursos,
+    PodeVerProgressoDeOutros, PodeGerenciarUsuarios). O layout monta um
+    Usuario com o perfil que esta no cookie e pergunta para ele - nao
+    sai comparando texto na mao.
+    =====================================================================
+*@
+@{
+    string afr_controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+
+    bool afr_logado = User.Identity != null && User.Identity.IsAuthenticated;
+
+    string afr_nome = User.FindFirst("PrimeiroNome")?.Value
+                      ?? User.Identity?.Name
+                      ?? "";
+
+    // O perfil vem do cookie. Montamos um Usuario so para usar os
+    // metodos de permissao que o desktop tambem usa.
+    string afr_perfil = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                        ?? Usuario.PERFIL_ALUNO;
+
+    Usuario afr_eu = new Usuario();
+    afr_eu.afr_Perfil = afr_perfil;
+
+    bool afr_podeCursos = afr_logado && afr_eu.PodeGerenciarCursos();
+    bool afr_podeProgresso = afr_logado && afr_eu.PodeVerProgressoDeOutros();
+    bool afr_podeUsuarios = afr_logado && afr_eu.PodeGerenciarUsuarios();
+
+    // A etiqueta do perfil na barra do topo NAO usa as classes etiqueta-*:
+    // elas sao para fundo claro, e a de aluno sumiria no azul do topo.
+    // O estilo dela e o .topo .usuario .perfil, igual para os tres perfis.
+}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] - Plataforma de Cursos</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+@if (afr_logado)
+{
+    <header class="topo">
+        <a class="marca" asp-controller="Home" asp-action="Index">Plataforma de Cursos</a>
+
+        <nav aria-label="Menu principal">
+            <a asp-controller="Home" asp-action="Index"
+               class="@(afr_controller == "Home" ? "ativo" : "")">Painel</a>
+
+            <a asp-controller="Catalogo" asp-action="Index"
+               class="@(afr_controller == "Catalogo" ? "ativo" : "")">Catalogo</a>
+
+            @if (afr_podeCursos)
+            {
+                <a asp-controller="Cursos" asp-action="Index"
+                   class="@(afr_controller == "Cursos" ? "ativo" : "")">Cursos</a>
+            }
+
+            @if (afr_podeProgresso)
+            {
+                <a asp-controller="Progresso" asp-action="Index"
+                   class="@(afr_controller == "Progresso" ? "ativo" : "")">Progresso</a>
+            }
+
+            @if (afr_podeUsuarios)
+            {
+                <a asp-controller="Usuarios" asp-action="Index"
+                   class="@(afr_controller == "Usuarios" ? "ativo" : "")">Usuarios</a>
+            }
+        </nav>
+
+        <div class="usuario">
+            <span>@afr_nome</span>
+            <span class="perfil">@afr_perfil</span>
+            <a asp-controller="Conta" asp-action="Logout">Sair</a>
+        </div>
+    </header>
+}
+
+<main>
+    @* Faixas de aviso: TempData sobrevive a um redirecionamento *@
+    @if (TempData["Sucesso"] != null)
+    {
+        <p class="aviso aviso-sucesso" role="status">@TempData["Sucesso"]</p>
+    }
+
+    @* VERSAO 3 - faixa do XP e das conquistas, em roxo, separada do
+       sucesso e do erro para o aluno nao confundir "gravou no banco"
+       com "voce ganhou pontos". So aparece quando houve ganho. *@
+    @if (TempData["Ganho"] != null)
+    {
+        <p class="aviso aviso-ganho" role="status">@TempData["Ganho"]</p>
+    }
+
+    @if (TempData["Erro"] != null)
+    {
+        <p class="aviso aviso-erro" role="alert">@TempData["Erro"]</p>
+    }
+
+    @if (ViewBag.Erro != null)
+    {
+        <p class="aviso aviso-erro" role="alert">@ViewBag.Erro</p>
+    }
+
+    @RenderBody()
+</main>
+
+<footer class="rodape">
+    Plataforma de Cursos Online &middot; Projeto academico &middot; Professor Antonio Gra&ccedil;a
+</footer>
+
+</body>
+</html>

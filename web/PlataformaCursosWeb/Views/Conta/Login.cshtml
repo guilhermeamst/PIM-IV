@@ -1,0 +1,76 @@
+@*
+    =====================================================================
+    DC01 / DS01 - Tela de login.
+    Usa um layout proprio (sem a barra do topo), porque quem ve esta
+    pagina ainda nao esta logado e nao tem menu para navegar.
+    =====================================================================
+*@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Entrar";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Entrar - Plataforma de Cursos</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+
+<main class="tela-acesso">
+    <section class="caixa-acesso">
+
+        <header>
+            <h1 class="marca-grande">Plataforma de Cursos</h1>
+            <p class="marca-sub">Acesse com seu email e sua senha</p>
+        </header>
+
+        @if (TempData["Sucesso"] != null)
+        {
+            <p class="aviso aviso-sucesso" role="status">@TempData["Sucesso"]</p>
+        }
+
+        @if (ViewBag.Erro != null)
+        {
+            <p class="aviso aviso-erro" role="alert">@ViewBag.Erro</p>
+        }
+
+        @if (ViewBag.ErroBanco != null)
+        {
+            <p class="aviso aviso-erro" role="alert">@ViewBag.ErroBanco</p>
+        }
+
+        <div class="cartao">
+            <form asp-controller="Conta" asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="campo">
+                    <label asp-for="afr_Email">Email</label>
+                    <input asp-for="afr_Email" type="email" autocomplete="username"
+                           placeholder="seu@@email.com" />
+                    <span asp-validation-for="afr_Email" class="erro-validacao"></span>
+                </div>
+
+                <div class="campo">
+                    <label asp-for="afr_Senha">Senha</label>
+                    <input asp-for="afr_Senha" type="password" autocomplete="current-password" />
+                    <span asp-validation-for="afr_Senha" class="erro-validacao"></span>
+                </div>
+
+                <button type="submit" class="botao botao-primario botao-largo">Entrar</button>
+            </form>
+
+            <p class="ajuda" style="margin-top:14px;">
+                <a asp-controller="Conta" asp-action="RecuperarSenha"
+                   asp-route-email="@Model.afr_Email">Esqueci minha senha</a>
+            </p>
+        </div>
+
+    </section>
+</main>
+
+</body>
+</html>

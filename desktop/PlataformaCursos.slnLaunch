@@ -1,0 +1,16 @@
+[
+  {
+    "Name": "API + Desktop",
+    "Projects": [
+      {
+        "Path": "..\\Api\\PlataformaCursosApi\\PlataformaCursosApi.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "PlataformaCursos\\PlataformaCursos.csproj",
+        "Action": "Start",
+        "DebugTarget": "API (Azure)"
+      }
+    ]
+  }
+]

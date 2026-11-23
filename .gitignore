@@ -1,0 +1,13 @@
+# Secrets and dependencies
+.env
+.env.*
+!.env.example
+!.env.exemplo
+node_modules/
+.expo/
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.log

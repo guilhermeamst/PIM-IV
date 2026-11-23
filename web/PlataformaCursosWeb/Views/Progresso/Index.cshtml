@@ -1,0 +1,329 @@
+@*
+    =====================================================================
+    DS07 - PROGRESSO DOS ALUNOS (visao do professor)
+
+    E o FrmProgressoAlunos do desktop, que nasceu nesta versao. No
+    Astah o diagrama esta salvo com o nome "Criar Curso", mas as
+    mensagens dentro dele sao todas de progresso e a linha de vida do
+    Professor aparece nele:
+
+        acessarProgresso()          abrir esta pagina
+        solicitarProgresso(aluno)   escolher o aluno
+        buscarProgresso(aluno)      o servico vai ao banco
+        aulasConcluidas()           conta as aulas feitas
+        progresso(dados)            devolve a lista
+        exibirProgresso(dados)      a tabela abaixo
+        mostrarProgresso()          o resumo do rodape
+
+    Quem entra: professor e admin. O aluno comum ve o proprio progresso no
+    catalogo.
+    =====================================================================
+*@
+@model ProgressoAlunosViewModel
+@{
+    ViewData["Title"] = "Progresso dos alunos";
+}
+
+<h1>Progresso dos alunos</h1>
+<p class="subtitulo">
+    Perfil @ViewBag.Perfil &middot;
+    escolha um aluno para acompanhar o andamento dele em cada curso.
+</p>
+
+@if (ViewBag.Aviso != null)
+{
+    <p class="aviso aviso-info" role="status">@ViewBag.Aviso</p>
+}
+
+@* ---------------------------------------------------------------- *@
+@* DS07 - solicitarProgresso(aluno)                                  *@
+@* ---------------------------------------------------------------- *@
+<section class="cartao" aria-label="Buscar aluno">
+    <form role="search" asp-controller="Progresso" asp-action="Index" method="get">
+        <div class="filtros">
+            @*
+                O nome do campo e "termo" porque a acao do controller
+                recebe parametros soltos (string termo, int alunoId), e
+                nao o ViewModel inteiro. Por isso aqui vai um input
+                comum, nao o asp-for.
+            *@
+            <div class="campo campo-largo">
+                <label for="termo">Buscar aluno por nome ou email</label>
+                <input type="search" id="termo" name="termo"
+                       value="@Model.afr_Termo" placeholder="Ex.: maria" />
+            </div>
+
+            <button type="submit" class="botao botao-primario">Buscar</button>
+
+            @if (!string.IsNullOrWhiteSpace(Model.afr_Termo))
+            {
+                <a asp-controller="Progresso" asp-action="Index" class="botao">Ver todos</a>
+            }
+        </div>
+    </form>
+</section>
+
+@* ---------------------------------------------------------------- *@
+@* A LISTA DE ALUNOS                                                 *@
+@* ---------------------------------------------------------------- *@
+@if (Model.afr_Alunos.Count > 0)
+{
+    <section class="cartao">
+        <h3>Alunos</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Cadastro</th>
+                    <th class="coluna-acoes">&nbsp;</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (Usuario afr_aluno in Model.afr_Alunos)
+            {
+                <tr>
+                    <td>@afr_aluno.afr_Nome</td>
+                    <td>@afr_aluno.afr_Email</td>
+                    <td>@if (afr_aluno.afr_DataCadastro > DateTime.MinValue)
+                        {
+                            <time datetime="@afr_aluno.afr_DataCadastro.ToString("yyyy-MM-dd")">@afr_aluno.afr_DataCadastro.ToString("dd/MM/yyyy")</time>
+                        }
+                        else
+                        {
+                            <span aria-label="sem data">&mdash;</span>
+                        }</td>
+                    <td class="coluna-acoes">
+                        <a class="botao botao-pequeno @(afr_aluno.afr_Id == Model.afr_AlunoId ? "botao-primario" : "")"
+                           asp-controller="Progresso" asp-action="Index"
+                           asp-route-termo="@Model.afr_Termo"
+                           asp-route-alunoId="@afr_aluno.afr_Id">Ver progresso</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}
+
+@* ---------------------------------------------------------------- *@
+@* DS07 - exibirProgresso(dados)                                     *@
+@* ---------------------------------------------------------------- *@
+@if (Model.TemResultado())
+{
+    <h2>@Model.afr_Aluno.afr_Nome</h2>
+    <p class="subtitulo">
+        @Model.afr_Aluno.afr_Email
+        @if (Model.afr_Aluno.afr_DataCadastro > DateTime.MinValue)
+        {
+            <text>&middot; cadastro em <time datetime="@Model.afr_Aluno.afr_DataCadastro.ToString("yyyy-MM-dd")">@Model.afr_Aluno.afr_DataCadastro.ToString("dd/MM/yyyy")</time></text>
+        }
+    </p>
+
+    @* ------------------------------------------------------------- *@
+    @* VERSAO 3.2 - XP, nivel e conquistas deste aluno                *@
+    @*                                                                *@
+    @* Antes o professor via so o progresso por curso. O engajamento  *@
+    @* - XP, sequencia de dias, medalhas - era invisivel para ele.    *@
+    @* ------------------------------------------------------------- *@
+    @* Sem @{ } aqui: dentro do @if o Razor ja esta em modo codigo, e     *@
+    @* chaves comuns criariam um escopo que esconderia afr_pont abaixo.   *@
+    var afr_pont = Model.afr_Pontuacao;
+    int afr_percentualAluno = afr_pont.ObterPercentualDoNivel();
+
+    <section class="cartao painel-xp" style="margin-bottom:20px;" aria-label="Pontuacao do aluno">
+        <header class="xp-topo">
+            <div>
+                <p class="xp-nivel">
+                    Nivel @afr_pont.ObterNivel() &mdash; @afr_pont.ObterTituloDoNivel()
+                </p>
+                <p class="xp-detalhe">
+                    @afr_pont.afr_XpTotal XP &nbsp;|&nbsp;
+                    @afr_pont.ContarConquistadas() de
+                    @afr_pont.afr_Conquistas.Count conquista(s)
+                </p>
+
+                @if (afr_pont.afr_SequenciaAtual >= 2)
+                {
+                    <p class="xp-sequencia">
+                        @afr_pont.afr_SequenciaAtual dias seguidos
+                        <span class="xp-recorde">
+                            (recorde: @afr_pont.afr_MelhorSequencia)
+                        </span>
+                    </p>
+                }
+            </div>
+
+            <p class="xp-contagem">
+                @afr_pont.afr_AulasConcluidas aula(s) concluida(s)
+            </p>
+        </header>
+
+        <progress class="xp-barra" max="100" value="@afr_percentualAluno"
+                  aria-label="Progresso ate o proximo nivel">@afr_percentualAluno%</progress>
+
+        @if (afr_pont.afr_Conquistas.Count > 0)
+        {
+            <ul class="xp-conquistas">
+                @foreach (var afr_medalha in afr_pont.afr_Conquistas)
+                {
+                    string afr_classe = afr_medalha.afr_Conquistada
+                        ? "medalha medalha-ganha"
+                        : "medalha medalha-falta";
+
+                    string afr_dica = afr_medalha.afr_Descricao +
+                                      " (+" + afr_medalha.afr_XpBonus + " XP)";
+
+                    <li class="@afr_classe" title="@afr_dica">
+                        @afr_medalha.afr_Icone @afr_medalha.afr_Nome
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @if (Model.afr_Progresso.Count == 0)
+    {
+        <div class="cartao vazio">
+            <p>Nao existe nenhum curso ativo cadastrado no sistema.</p>
+        </div>
+    }
+    else
+    {
+        <dl class="grade grade-3 numeros" style="margin-bottom:20px;">
+            <div class="cartao">
+                <dt class="numero-rotulo">curso(s) acompanhado(s)</dt>
+                <dd class="numero">@Model.afr_Progresso.Count</dd>
+            </div>
+
+            <div class="cartao">
+                <dt class="numero-rotulo">curso(s) concluido(s)</dt>
+                <dd class="numero">@Model.ContarConcluidos()</dd>
+            </div>
+
+            <div class="cartao">
+                <dt class="numero-rotulo">media geral de conclusao</dt>
+                <dd class="numero">@Model.CalcularMedia()%</dd>
+            </div>
+        </dl>
+
+        <section class="cartao" aria-label="Progresso por curso">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Curso</th>
+                        <th>Aulas</th>
+                        <th>Percentual</th>
+                        <th>Minimo</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (ProgressoCurso afr_linha in Model.afr_Progresso)
+                {
+                    ResultadoConclusao afr_r = afr_linha.afr_Resultado;
+
+                    string afr_classeLinha = afr_r.afr_Aprovado ? "linha-aprovada" : "";
+
+                    string afr_classeStatus = "situacao-neutro";
+
+                    if (afr_r.afr_Aprovado)
+                    {
+                        afr_classeStatus = "situacao-aprovado";
+                    }
+                    else if (afr_r.afr_Concluidas > 0)
+                    {
+                        afr_classeStatus = "situacao-andamento";
+                    }
+
+                    <tr class="@afr_classeLinha">
+                        <td>@afr_linha.afr_Curso.afr_Titulo</td>
+
+                        <td>@afr_r.afr_Concluidas de @afr_r.afr_Total</td>
+
+                        <td>
+                            <progress class="barra-pequena @(afr_r.afr_Aprovado ? "completo" : "")"
+                                      max="100" value="@(afr_r.afr_Percentual)"
+                                      aria-label="Progresso no curso">@(afr_r.afr_Percentual)%</progress>
+                            @afr_r.afr_Percentual%
+                        </td>
+
+                        <td>@afr_r.afr_PercentualMinimo%</td>
+
+                        <td class="@afr_classeStatus">@afr_r.ObterStatus()</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </section>
+    }
+}
+
+@* ----------------------------------------------------------------- *@
+@* VERSAO 3.2 - CLASSIFICACAO POR XP                                  *@
+@*                                                                    *@
+@* A lista chega ja filtrada: o GamificacaoService devolve vazio para  *@
+@* quem nao pode ver. Por isso aqui basta checar se tem conteudo -     *@
+@* nao ha regra de perfil repetida na pagina, que e onde esse tipo de  *@
+@* checagem costuma ficar desatualizada.                               *@
+@* ----------------------------------------------------------------- *@
+@if (Model.afr_Ranking.Count > 0)
+{
+    <h2 style="margin-top:28px;">Classificacao por XP</h2>
+    <p class="subtitulo">
+        Alunos ativos, ordenados por experiencia acumulada. O formato
+        acompanha a rota /api/gamificacao/turma, para a lista ser a
+        mesma no celular e aqui.
+    </p>
+
+    <section class="cartao" aria-label="Classificacao por XP">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nome</th>
+                    <th>XP</th>
+                    <th>Nivel</th>
+                    <th>Sequencia</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var afr_linha in Model.afr_Ranking)
+            {
+                @* Quem ainda nao pontuou fica apagado; os tres          *@
+                @* primeiros ganham destaque. Montado antes do HTML      *@
+                @* porque expressao de varias linhas dentro de atributo  *@
+                @* Razor da problema.                                     *@
+                string afr_classeLinha = "";
+
+                if (afr_linha.afr_XpTotal <= 0)
+                {
+                    afr_classeLinha = "ranking-zerado";
+                }
+                else if (afr_linha.afr_Posicao <= 3)
+                {
+                    afr_classeLinha = "ranking-podio";
+                }
+
+                <tr class="@afr_classeLinha">
+                    <td>@afr_linha.ObterMedalha()</td>
+                    <td>@afr_linha.afr_Nome</td>
+                    <td>@afr_linha.afr_XpTotal</td>
+                    <td>@afr_linha.ObterNivel()</td>
+                    <td>
+                        @if (afr_linha.afr_SequenciaAtual >= 2)
+                        {
+                            @(afr_linha.afr_SequenciaAtual + " dias")
+                        }
+                        else
+                        {
+                            <span>&mdash;</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </section>
+}
