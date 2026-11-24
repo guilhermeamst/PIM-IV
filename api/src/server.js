@@ -99,19 +99,16 @@ function tokenFor(user) {
 app.get('/api/health', async (req, res) => {
   try {
     const pool = await getPool();
-    const result = await pool.request().query(`
-      SELECT
-        @@SERVERNAME AS Servidor,
-        DB_NAME() AS Banco,
-        USER_NAME() AS Usuario,
-        OBJECT_ID('dbo.Usuarios', 'U') AS TabelaUsuarios,
-        OBJECT_ID('dbo.CodigosRecuperacao', 'U') AS TabelaRecuperacao
-    `);
+    await pool.request().query('SELECT 1 AS ok');
 
-    console.log('[DIAGNOSTICO BANCO]', result.recordset[0]);
     res.json({ api: 'ok', database: 'ok' });
   } catch (e) {
-    res.status(500).json({ api: 'ok', database: 'error', message: e.message });
+    console.error('[HEALTH]', e.message);
+
+    res.status(500).json({
+      api: 'ok',
+      database: 'error'
+    });
   }
 });
 
