@@ -78,7 +78,7 @@ namespace PlataformaCursos
 
         private static bool LerAtiva()
         {
-            string afr_valor = Environment.GetEnvironmentVariable("API_ATIVA") ?? "";
+            string afr_valor = Environment.GetEnvironmentVariable("API_ATIVA") ?? "true";
 
             return afr_valor.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
         }
@@ -87,7 +87,7 @@ namespace PlataformaCursos
         {
             string afr_valor = Environment.GetEnvironmentVariable("API_URL");
 
-            return string.IsNullOrWhiteSpace(afr_valor) ? "http://localhost:3000" : afr_valor.Trim();
+            return string.IsNullOrWhiteSpace(afr_valor) ? "https://pim-iv-api.onrender.com" : afr_valor.Trim();
         }
 
         private static ClienteApi afr_cliente = null;
@@ -124,6 +124,9 @@ namespace PlataformaCursos
     // =================================================================
     public class RespostaApi
     {
+        public string CodigoRecuperacao {
+            get { try { using var doc = JsonDocument.Parse(afr_CorpoJson); return doc.RootElement.TryGetProperty("codigoRecuperacao", out var code) ? code.GetString() ?? "" : ""; } catch (JsonException) { return ""; } }
+        }
         public bool afr_Ok { get; set; }
         public int afr_CodigoHttp { get; set; }
         public string afr_Mensagem { get; set; } = "";
@@ -246,11 +249,13 @@ namespace PlataformaCursos
         // administrador. Esta aqui para o programa dar a mensagem certa
         // em vez de parecer quebrado.
         // -------------------------------------------------------------
-        public RespostaApi RecuperarSenha(string afr_email)
+        public RespostaApi RecuperarSenha(string afr_email, string codigo = "", string novaSenha = "")
         {
             Dictionary<string, string> afr_corpo = new Dictionary<string, string>();
             afr_corpo["email"] = (afr_email ?? "").Trim().ToLowerInvariant();
 
+            afr_corpo["codigoRecuperacao"] = codigo;
+            afr_corpo["novaSenha"] = novaSenha;
             return Chamar(HttpMethod.Post, "/api/auth/recover", afr_corpo);
         }
 

@@ -1,0 +1,260 @@
+
+> plataforma-cursos-api@1.0.0 test
+> node --test test/*.test.js
+
+TAP version 13
+# Subtest: hash scrypt tem formato esperado e nao contem senha
+ok 1 - hash scrypt tem formato esperado e nao contem senha
+  ---
+  duration_ms: 86.642701
+  type: 'test'
+  ...
+# Subtest: salt diferente para senhas iguais
+ok 2 - salt diferente para senhas iguais
+  ---
+  duration_ms: 160.226581
+  type: 'test'
+  ...
+# Subtest: verifica senha correta e rejeita incorreta
+ok 3 - verifica senha correta e rejeita incorreta
+  ---
+  duration_ms: 255.65659
+  type: 'test'
+  ...
+# Subtest: rejeita hash malformado e valor nulo
+ok 4 - rejeita hash malformado e valor nulo
+  ---
+  duration_ms: 0.326604
+  type: 'test'
+  ...
+# Subtest: compatibilidade legada atual
+ok 5 - compatibilidade legada atual
+  ---
+  duration_ms: 0.241575
+  type: 'test'
+  ...
+# Subtest: cadastro publico normaliza dados e impede escalada de perfil
+ok 6 - cadastro publico normaliza dados e impede escalada de perfil
+  ---
+  duration_ms: 0.988614
+  type: 'test'
+  ...
+# Subtest: rejeita nome curto
+ok 7 - rejeita nome curto
+  ---
+  duration_ms: 0.120162
+  type: 'test'
+  ...
+# Subtest: rejeita email invalido
+ok 8 - rejeita email invalido
+  ---
+  duration_ms: 0.155095
+  type: 'test'
+  ...
+# Subtest: rejeita senha curta
+ok 9 - rejeita senha curta
+  ---
+  duration_ms: 0.339362
+  type: 'test'
+  ...
+# Subtest: rejeita senha longa
+ok 10 - rejeita senha longa
+  ---
+  duration_ms: 0.465763
+  type: 'test'
+  ...
+# Subtest: rejeita confirmacao diferente
+ok 11 - rejeita confirmacao diferente
+  ---
+  duration_ms: 0.179071
+  type: 'test'
+  ...
+# Subtest: admin pode cadastrar professor
+ok 12 - admin pode cadastrar professor
+  ---
+  duration_ms: 0.090176
+  type: 'test'
+  ...
+# Subtest: rejeita perfil desconhecido
+ok 13 - rejeita perfil desconhecido
+  ---
+  duration_ms: 0.06605
+  type: 'test'
+  ...
+# Subtest: codigo de recuperacao possui 16 caracteres validos
+ok 14 - codigo de recuperacao possui 16 caracteres validos
+  ---
+  duration_ms: 0.269107
+  type: 'test'
+  ...
+# Subtest: normalizacao de codigo
+ok 15 - normalizacao de codigo
+  ---
+  duration_ms: 0.159041
+  type: 'test'
+  ...
+# Subtest: digest SHA256 independe de caixa e hifens
+ok 16 - digest SHA256 independe de caixa e hifens
+  ---
+  duration_ms: 0.373434
+  type: 'test'
+  ...
+# Subtest: health confirma API e estrutura do banco simulado
+ok 17 - health confirma API e estrutura do banco simulado
+  ---
+  duration_ms: 54.987359
+  type: 'test'
+  ...
+# Subtest: login retorna token e dados publicos do usuario
+ok 18 - login retorna token e dados publicos do usuario
+  ---
+  duration_ms: 99.855687
+  type: 'test'
+  ...
+# Subtest: login rejeita senha incorreta e usuario inativo
+ok 19 - login rejeita senha incorreta e usuario inativo
+  ---
+  duration_ms: 152.425949
+  type: 'test'
+  ...
+# Subtest: rota protegida rejeita requisicao sem token
+ok 20 - rota protegida rejeita requisicao sem token
+  ---
+  duration_ms: 4.596035
+  type: 'test'
+  ...
+# Subtest: ALUNO consulta catalogo e nao visualiza cursos inativos
+ok 21 - ALUNO consulta catalogo e nao visualiza cursos inativos
+  ---
+  duration_ms: 87.508786
+  type: 'test'
+  ...
+# Subtest: PROFESSOR nao pode acessar catalogo exclusivo de ALUNO
+ok 22 - PROFESSOR nao pode acessar catalogo exclusivo de ALUNO
+  ---
+  duration_ms: 57.029084
+  type: 'test'
+  ...
+# Subtest: permissao usa o perfil atual do banco, nao o perfil antigo do token
+ok 23 - permissao usa o perfil atual do banco, nao o perfil antigo do token
+  ---
+  duration_ms: 46.202435
+  type: 'test'
+  ...
+# Subtest: PROFESSOR consulta somente os proprios cursos
+ok 24 - PROFESSOR consulta somente os proprios cursos
+  ---
+  duration_ms: 42.249846
+  type: 'test'
+  ...
+# Subtest: ALUNO nao pode acessar rotas administrativas
+ok 25 - ALUNO nao pode acessar rotas administrativas
+  ---
+  duration_ms: 44.997724
+  type: 'test'
+  ...
+# Subtest: ALUNO nao registra progresso antes de se matricular
+ok 26 - ALUNO nao registra progresso antes de se matricular
+  ---
+  duration_ms: 50.512988
+  type: 'test'
+  ...
+# Subtest: ALUNO pode se matricular e concluir uma aula
+ok 27 - ALUNO pode se matricular e concluir uma aula
+  ---
+  duration_ms: 51.573781
+  type: 'test'
+  ...
+# Subtest: API valida os dados enviados ao registrar progresso
+ok 28 - API valida os dados enviados ao registrar progresso
+  ---
+  duration_ms: 45.152188
+  type: 'test'
+  ...
+# Subtest: gamificacao exibe o painel apenas para ALUNO
+ok 29 - gamificacao exibe o painel apenas para ALUNO
+  ---
+  duration_ms: 82.92241
+  type: 'test'
+  ...
+# Subtest: recuperacao sem codigo valido retorna 400
+ok 30 - recuperacao sem codigo valido retorna 400
+  ---
+  duration_ms: 1.80662
+  type: 'test'
+  ...
+# Subtest: rota inexistente retorna 404
+ok 31 - rota inexistente retorna 404
+  ---
+  duration_ms: 1.264441
+  type: 'test'
+  ...
+# Subtest: ADMIN pode acessar rotas administrativas
+ok 32 - ADMIN pode acessar rotas administrativas
+  ---
+  duration_ms: 1.83939
+  type: 'test'
+  ...
+# Subtest: PROFESSOR nao pode acessar rotas administrativas
+ok 33 - PROFESSOR nao pode acessar rotas administrativas
+  ---
+  duration_ms: 0.374175
+  type: 'test'
+  ...
+# Subtest: PROFESSOR pode acessar rotas exclusivas de professor
+ok 34 - PROFESSOR pode acessar rotas exclusivas de professor
+  ---
+  duration_ms: 0.287124
+  type: 'test'
+  ...
+# Subtest: ALUNO nao pode acessar rotas de professor
+ok 35 - ALUNO nao pode acessar rotas de professor
+  ---
+  duration_ms: 0.282938
+  type: 'test'
+  ...
+# Subtest: ALUNO pode acessar rotas exclusivas de aluno
+ok 36 - ALUNO pode acessar rotas exclusivas de aluno
+  ---
+  duration_ms: 0.367195
+  type: 'test'
+  ...
+# Subtest: ADMIN nao pode registrar progresso como aluno
+ok 37 - ADMIN nao pode registrar progresso como aluno
+  ---
+  duration_ms: 0.282406
+  type: 'test'
+  ...
+# Subtest: requisicao sem usuario nao passa pela verificacao de perfil
+ok 38 - requisicao sem usuario nao passa pela verificacao de perfil
+  ---
+  duration_ms: 1.715873
+  type: 'test'
+  ...
+# Subtest: ADMIN pode consultar qualquer curso
+ok 39 - ADMIN pode consultar qualquer curso
+  ---
+  duration_ms: 0.220363
+  type: 'test'
+  ...
+# Subtest: PROFESSOR pode consultar somente o proprio curso
+ok 40 - PROFESSOR pode consultar somente o proprio curso
+  ---
+  duration_ms: 0.731034
+  type: 'test'
+  ...
+# Subtest: ALUNO pode consultar somente cursos ativos
+ok 41 - ALUNO pode consultar somente cursos ativos
+  ---
+  duration_ms: 0.759517
+  type: 'test'
+  ...
+1..41
+# tests 41
+# suites 0
+# pass 41
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1103.137753

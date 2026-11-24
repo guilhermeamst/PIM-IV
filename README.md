@@ -201,3 +201,13 @@ O relatório é salvo em `api/reports/testes.html`. Os testes com banco simulado
 O projeto aplica conhecimentos de desenvolvimento multiplataforma, programação orientada a objetos, banco de dados relacional, integração de sistemas, segurança, computação em nuvem e qualidade de software.
 
 Desenvolvido para fins acadêmicos pelos integrantes do PIM IV de Análise e Desenvolvimento de Sistemas — UNIP.
+
+## Revisao integrada de autenticacao
+
+- Mobile, Desktop e Web usam a API hospedada por padrao. O cadastro publico permanece no Mobile; o painel administrativo cria contas nos tres clientes.
+- Recuperacao usa codigo pessoal de 16 caracteres; a API rotaciona o codigo ao redefinir a senha. O administrador entrega o codigo inicial de forma privada.
+- Configure JWT_SECRET no Render com pelo menos 32 caracteres aleatorios antes do deploy. Alterar a chave invalida tokens existentes.
+- Senhas legadas em texto puro sao convertidas para scrypt no login bem-sucedido. Contas antigas sem codigo ainda precisam de procedimento de recuperacao assistida.
+- Execute sql/Etapa5_RecuperacaoCodigo.sql conectado ao banco correto; se a tabela tiver formato legado, o script interrompe sem apagar dados.
+- O modo SQL legado permanece no codigo C# e nao deve ser usado no ambiente integrado.
+- Validacao: 41 testes Node com banco simulado; compilacao e testes de interface C# e Android ainda necessarios.

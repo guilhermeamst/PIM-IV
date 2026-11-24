@@ -1,3 +1,4 @@
+process.env.JWT_SECRET = 'test-only-secret-not-for-production-123456';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
@@ -43,6 +44,7 @@ const sql = {
 function executeQuery(statement, values) {
   const query = statement.replace(/\s+/g, ' ').trim().toLowerCase();
   const empty = { recordset: [], rowsAffected: [0] };
+  if (query.startsWith('update dbo.usuarios set senha=@senha where id=@id and senha=@old')) { const u=users.find(x=>x.Id===values.id && x.Senha===values.old); if(u)u.Senha=values.senha; return {recordset:[],rowsAffected:[u?1:0]}; }
   if (query === 'select 1 as ok') return { recordset: [{ ok: 1 }] };
 
   if (query.includes('declare @novasconquistas table')) {
@@ -152,7 +154,7 @@ function executeQuery(statement, values) {
     const enrollment = enrollments.find((item) => item.CursoId === values.cursoId && item.UsuarioId === values.usuarioId);
     return { recordset: enrollment ? [{ Id: enrollment.Id }] : [] };
   }
-  if (query.includes('from dbo.matriculas') && query.includes('where usuarioid = @usuarioid and cursoid = @cursoid')) {
+  if (query.startsWith('select') && query.includes('from dbo.matriculas') && query.includes('where usuarioid = @usuarioid and cursoid = @cursoid')) {
     const enrollment = enrollments.find((item) => item.CursoId === values.cursoId && item.UsuarioId === values.usuarioId);
     return { recordset: enrollment ? [{ Id: enrollment.Id }] : [] };
   }

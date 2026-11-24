@@ -119,8 +119,7 @@ router.get('/me', auth, studentOnly, async (req, res) => {
     console.error('Erro na gamificação:', error);
 
     return res.status(500).json({
-      message: 'Erro ao carregar gamificação.',
-      detail: error.message
+      message: 'Erro ao carregar gamificação.'
     });
   }
 });

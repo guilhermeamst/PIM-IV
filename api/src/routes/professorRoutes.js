@@ -48,7 +48,7 @@ router.get('/cursos', async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao listar seus cursos.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao listar seus cursos.' });
   }
 });
 
@@ -73,7 +73,7 @@ router.post('/cursos', async (req, res) => {
 
     res.status(201).json({ id: result.recordset[0].Id, message: 'Curso criado.' });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao criar curso.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao criar curso.' });
   }
 });
 
@@ -105,7 +105,7 @@ router.put('/cursos/:id', async (req, res) => {
 
     res.json({ message: 'Curso atualizado.' });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao atualizar curso.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao atualizar curso.' });
   }
 });
 
@@ -137,7 +137,7 @@ router.get('/cursos/:id/aulas', async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao listar aulas.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao listar aulas.' });
   }
 });
 
@@ -174,7 +174,7 @@ router.post('/cursos/:id/aulas', async (req, res) => {
 
     res.status(201).json({ id: result.recordset[0].Id, message: 'Aula criada.' });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao criar aula.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao criar aula.' });
   }
 });
 
@@ -223,7 +223,7 @@ router.delete('/aulas/:id', async (req, res) => {
       }
     }
 
-    res.status(500).json({ message: 'Erro ao excluir aula.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao excluir aula.' });
   }
 });
 
@@ -268,7 +268,7 @@ router.get('/cursos/:id/alunos', async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao consultar alunos do curso.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao consultar alunos do curso.' });
   }
 });
 

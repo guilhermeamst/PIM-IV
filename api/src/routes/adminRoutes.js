@@ -65,8 +65,7 @@ router.get('/cursos', async (req, res) => {
     res.json(result.recordset);
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao listar cursos.',
-      detail: error.message,
+      message: 'Erro ao listar cursos.'
     });
   }
 });
@@ -101,8 +100,7 @@ router.post('/cursos', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao criar curso.',
-      detail: error.message,
+      message: 'Erro ao criar curso.'
     });
   }
 });
@@ -146,8 +144,7 @@ router.put('/cursos/:id', async (req, res) => {
     res.json({ message: 'Curso atualizado.' });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao atualizar curso.',
-      detail: error.message,
+      message: 'Erro ao atualizar curso.'
     });
   }
 });
@@ -200,8 +197,7 @@ router.delete('/cursos/:id', async (req, res) => {
     }
 
     res.status(500).json({
-      message: 'Erro ao excluir curso.',
-      detail: error.message,
+      message: 'Erro ao excluir curso.'
     });
   }
 });
@@ -261,8 +257,7 @@ router.post('/cursos/:cursoId/aulas', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao criar aula.',
-      detail: error.message,
+      message: 'Erro ao criar aula.'
     });
   }
 });
@@ -287,8 +282,7 @@ router.delete('/aulas/:id', async (req, res) => {
     res.json({ message: 'Aula excluida.' });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao excluir aula.',
-      detail: error.message,
+      message: 'Erro ao excluir aula.'
     });
   }
 });
@@ -338,7 +332,7 @@ router.post('/usuarios', async (req, res) => {
 
     res.status(201).json({ id: result.recordset[0].Id, message: 'Usuario criado.' });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao criar usuario.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao criar usuario.' });
   }
 });
 
@@ -368,8 +362,7 @@ router.get('/usuarios', async (req, res) => {
     res.json(result.recordset);
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao listar usuarios.',
-      detail: error.message,
+      message: 'Erro ao listar usuarios.'
     });
   }
 });
@@ -423,8 +416,7 @@ router.put('/usuarios/:id/status', async (req, res) => {
     res.json({ message: 'Status atualizado.' });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao atualizar usuario.',
-      detail: error.message,
+      message: 'Erro ao atualizar usuario.'
     });
   }
 });

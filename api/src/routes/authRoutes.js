@@ -63,8 +63,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao autenticar.',
-      detail: error.message,
+      message: 'Erro ao autenticar.'
     });
   }
 });

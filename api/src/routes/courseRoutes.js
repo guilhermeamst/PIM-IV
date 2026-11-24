@@ -42,8 +42,7 @@ router.get('/', auth, studentOnly, async (req, res) => {
     res.json(result.recordset);
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao listar cursos.',
-      detail: error.message,
+      message: 'Erro ao listar cursos.'
     });
   }
 });
@@ -123,8 +122,7 @@ router.get('/:id', auth, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao carregar curso.',
-      detail: error.message,
+      message: 'Erro ao carregar curso.'
     });
   }
 });
@@ -160,7 +158,7 @@ router.post('/:id/matricula', auth, studentOnly, async (req, res) => {
 
     res.status(201).json({ message: 'Matricula realizada com sucesso.' });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao realizar matricula.', detail: error.message });
+    res.status(500).json({ message: 'Erro ao realizar matricula.' });
   }
 });
 
@@ -227,8 +225,7 @@ router.put('/:cursoId/aulas/:aulaId/progresso', auth, studentOnly, async (req, r
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Erro ao atualizar progresso.',
-      detail: error.message,
+      message: 'Erro ao atualizar progresso.'
     });
   }
 });

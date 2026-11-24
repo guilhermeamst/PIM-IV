@@ -189,121 +189,18 @@ namespace PlataformaCursosWeb.Controllers
         // =============================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult EnviarCodigo(RecuperarSenhaViewModel afr_dados)
-        {
-            afr_dados.afr_MinutosValidade = AutenticacaoService.MINUTOS_VALIDADE_CODIGO;
-
-            string afr_codigoGerado;
-            string afr_mensagem;
-
-            bool afr_ok = afr_autenticacaoService.SolicitarRecuperacao(
-                              afr_dados.afr_Email,
-                              out afr_codigoGerado,
-                              out afr_mensagem);
-
-            if (!afr_ok)
-            {
-                afr_dados.afr_Etapa = 1;
-                ViewBag.Erro = afr_mensagem;
-
-                return View("RecuperarSenha", afr_dados);
-            }
-
-            // exibirMensagem(): segue para a etapa 2
-            afr_dados.afr_Etapa = 2;
-            afr_dados.afr_Codigo = "";
-
-            ViewBag.Sucesso = afr_mensagem;
-
-            return View("RecuperarSenha", afr_dados);
-        }
-
-        // =============================================================
-        // DS02 - ETAPA 2: conferir o codigo informado
-        // =============================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public IActionResult ConferirCodigo(RecuperarSenhaViewModel afr_dados)
-        {
-            afr_dados.afr_MinutosValidade = AutenticacaoService.MINUTOS_VALIDADE_CODIGO;
-
-            string afr_mensagem;
-
-            bool afr_ok = afr_autenticacaoService.ConferirCodigo(
-                              afr_dados.afr_Email,
-                              afr_dados.afr_Codigo,
-                              out afr_mensagem);
-
-            if (!afr_ok)
-            {
-                afr_dados.afr_Etapa = 2;
-                ViewBag.Erro = afr_mensagem;
-
-                return View("RecuperarSenha", afr_dados);
-            }
-
-            afr_dados.afr_Etapa = 3;
-            ViewBag.Sucesso = afr_mensagem;
-
-            return View("RecuperarSenha", afr_dados);
-        }
-
-        // =============================================================
-        // DS02 - ETAPA 3: recuperacaoConcluida()
-        //
-        // O codigo vai de novo para o servico. Ele confere outra vez e
-        // so depois marca o codigo como usado: ninguem pula a etapa 2
-        // mandando o formulario direto.
-        // =============================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
         public IActionResult RedefinirSenha(RecuperarSenhaViewModel afr_dados)
         {
-            afr_dados.afr_MinutosValidade = AutenticacaoService.MINUTOS_VALIDADE_CODIGO;
-
-            string afr_mensagem;
-
-            bool afr_ok = afr_autenticacaoService.RedefinirSenha(
-                              afr_dados.afr_Email,
-                              afr_dados.afr_Codigo,
-                              afr_dados.afr_NovaSenha,
-                              afr_dados.afr_Confirmacao,
-                              out afr_mensagem);
-
-            if (!afr_ok)
-            {
-                afr_dados.afr_Etapa = 3;
-                ViewBag.Erro = afr_mensagem;
-
-                return View("RecuperarSenha", afr_dados);
+            Response.Headers["Cache-Control"] = "no-store";
+            if (string.IsNullOrEmpty(afr_dados.afr_NovaSenha) || afr_dados.afr_NovaSenha.Length < 8 || afr_dados.afr_NovaSenha != afr_dados.afr_Confirmacao)
+                ViewBag.Erro = "Informe senhas iguais com pelo menos 8 caracteres.";
+            else {
+                var r = afr_ponte.RecuperarComCodigo(afr_dados.afr_Email, afr_dados.afr_Codigo, afr_dados.afr_NovaSenha);
+                if (r.afr_Ok) ViewBag.NovoCodigo = r.CodigoRecuperacao;
+                else ViewBag.Erro = r.afr_Mensagem;
             }
-
-            TempData["Sucesso"] = afr_mensagem + " Use a nova senha para entrar.";
-
-            return RedirectToAction("Login");
-        }
-
-        // =============================================================
-        // A CAIXA DE ENTRADA SIMULADA (DS02 - a linha de vida "Email")
-        //
-        // O trabalho nao tem servidor de email. No desktop, o botao
-        // "Ver o codigo" abria o arquivo dados/emails.txt no Bloco de
-        // Notas, porque o programa rodava na propria maquina.
-        //
-        // Na web o arquivo fica no SERVIDOR, e o navegador nao consegue
-        // abrir um arquivo de la. Entao a aplicacao le o arquivo e
-        // mostra o conteudo nesta pagina.
-        //
-        // NUM SISTEMA REAL esta pagina nao existiria: o codigo chegaria
-        // no email da pessoa e ninguem mais poderia ve-lo.
-        // =============================================================
-        [HttpGet]
-        public IActionResult CaixaDeEntrada()
-        {
-            ViewBag.Conteudo = afr_autenticacaoService.LerCaixaDeEntrada();
-            ViewBag.Caminho = afr_autenticacaoService.ObterCaminhoCaixaDeEntrada();
-
-            return View();
+            ModelState.Clear();
+            return View("RecuperarSenha", new RecuperarSenhaViewModel { afr_Email = afr_dados.afr_Email });
         }
 
         // =============================================================

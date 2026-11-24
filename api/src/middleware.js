@@ -7,7 +7,7 @@ async function auth(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Token nao informado.' });
 
   try {
-    const claims = jwt.verify(token, process.env.JWT_SECRET || 'plataforma-cursos-segredo');
+    const claims = jwt.verify(token, require('./jwtSecret'));
     const pool = await getPool();
     const result = await pool.request().input('id', sql.Int, claims.id)
       .query('SELECT TOP 1 Id, Nome, Email, Perfil, Ativo FROM dbo.Usuarios WHERE Id=@id');

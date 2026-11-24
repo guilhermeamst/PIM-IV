@@ -72,7 +72,7 @@ namespace PlataformaCursosWeb.Services
         // Le do appsettings.json, secao "Api". Ausente = desligada.
         public bool EstaAtiva()
         {
-            return afr_configuracao.GetValue<bool?>("Api:Ativa") ?? false;
+            return afr_configuracao.GetValue<bool?>("Api:Ativa") ?? true;
         }
 
         public string ObterUrlBase()
@@ -81,7 +81,7 @@ namespace PlataformaCursosWeb.Services
 
             if (string.IsNullOrWhiteSpace(afr_url))
             {
-                return "http://localhost:3000";
+                return "https://pim-iv-api.onrender.com";
             }
 
             return afr_url;
@@ -112,6 +112,9 @@ namespace PlataformaCursosWeb.Services
     // =================================================================
     public class RespostaApi
     {
+        public string CodigoRecuperacao {
+            get { try { using var doc = JsonDocument.Parse(afr_CorpoJson); return doc.RootElement.TryGetProperty("codigoRecuperacao", out var code) ? code.GetString() ?? "" : ""; } catch (JsonException) { return ""; } }
+        }
         public bool afr_Ok { get; set; }
         public int afr_CodigoHttp { get; set; }
         public string afr_Mensagem { get; set; } = "";
@@ -234,11 +237,13 @@ namespace PlataformaCursosWeb.Services
         // administrador. Esta aqui para o programa dar a mensagem certa
         // em vez de parecer quebrado.
         // -------------------------------------------------------------
-        public RespostaApi RecuperarSenha(string afr_email)
+        public RespostaApi RecuperarSenha(string afr_email, string codigo = "", string novaSenha = "")
         {
             Dictionary<string, string> afr_corpo = new Dictionary<string, string>();
             afr_corpo["email"] = (afr_email ?? "").Trim().ToLowerInvariant();
 
+            afr_corpo["codigoRecuperacao"] = codigo;
+            afr_corpo["novaSenha"] = novaSenha;
             return Chamar(HttpMethod.Post, "/api/auth/recover", afr_corpo);
         }
 

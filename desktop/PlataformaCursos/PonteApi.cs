@@ -187,6 +187,8 @@ namespace PlataformaCursos
         }
 
         // POST /api/auth/recover - hoje sempre 501
+        public RespostaApi RecuperarComCodigo(string email, string codigo, string senha) => Cliente().RecuperarSenha(email, codigo, senha);
+
         public string RecuperarSenha(string afr_email)
         {
             RespostaApi afr_resposta = Cliente().RecuperarSenha(afr_email);
@@ -306,7 +308,7 @@ namespace PlataformaCursos
                 afr_usuario.afr_Nome, afr_usuario.afr_Email,
                 afr_usuario.afr_Senha, afr_usuario.afr_Perfil);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario cadastrado." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuario cadastrado. Entregue o codigo pessoal ao usuario: " + afr_resposta.CodigoRecuperacao : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
