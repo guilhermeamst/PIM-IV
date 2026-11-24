@@ -18,7 +18,7 @@ async function createAccount(body, publicSignup, res) {
   try {
     const pool = await getPool();
     const senhaHash = await hashPassword(data.senha);
-    const recoveryCode = newRecoveryCode();
+    const recoveryCode = publicSignup ? newRecoveryCode() : null;
     const tx = new sql.Transaction(pool);
     await tx.begin();
     let id;
@@ -28,16 +28,17 @@ async function createAccount(body, publicSignup, res) {
         .input('email', sql.NVarChar(200), data.email)
         .input('senha', sql.NVarChar(200), senhaHash)
         .input('perfil', sql.NVarChar(20), data.perfil)
-        .query(`INSERT INTO dbo.Usuarios (Nome, Email, Senha, Perfil, Ativo, DataCadastro)
-                OUTPUT INSERTED.Id VALUES (@nome, @email, @senha, @perfil, 1, GETDATE())`);
+        .input('primeiroAcesso', sql.Bit, !publicSignup)
+        .query(`INSERT INTO dbo.Usuarios (Nome, Email, Senha, Perfil, Ativo, DataCadastro, PrimeiroAcesso)
+                OUTPUT INSERTED.Id VALUES (@nome, @email, @senha, @perfil, 1, GETDATE(), @primeiroAcesso)`);
       id = result.recordset[0].Id;
-      await new sql.Request(tx).input('id', sql.Int, id)
+      if (publicSignup) await new sql.Request(tx).input('id', sql.Int, id)
         .input('digest', sql.Char(64), codeDigest(recoveryCode))
         .query(`INSERT INTO dbo.CodigosRecuperacao (UsuarioId, CodigoHash)
                 VALUES (@id, @digest)`);
       await tx.commit();
     } catch (e) { await tx.rollback(); throw e; }
-    return res.status(201).json({ id, message: 'Usuario criado com sucesso.', codigoRecuperacao: recoveryCode });
+    return res.status(201).json({ id, message: 'Usuario criado com sucesso.', primeiroAcesso: !publicSignup, ...(publicSignup ? { codigoRecuperacao: recoveryCode } : {}) });
   } catch (error) {
     console.error('[ERRO CADASTRO]', error.message);
     if (error.number === 2627 || error.number === 2601 || /duplicate|unique|duplicad/i.test(error.message))
@@ -82,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const pool = await getPool();
     const result = await pool.request().input('email', sql.NVarChar(200), email.trim().toLowerCase())
-      .query('SELECT TOP 1 Id, Nome, Email, Senha, Perfil, Ativo FROM dbo.Usuarios WHERE Email=@email');
+      .query('SELECT TOP 1 Id, Nome, Email, Senha, Perfil, Ativo, PrimeiroAcesso FROM dbo.Usuarios WHERE Email=@email');
     const user = result.recordset[0];
     if (!user || !(await verifyPassword(senha, user.Senha)))
       return res.status(401).json({ message: 'Email ou senha incorretos.' });
@@ -90,8 +91,30 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user.Senha.startsWith('scrypt:')) {
       await pool.request().input('id',sql.Int,user.Id).input('old',sql.NVarChar(200),user.Senha).input('senha',sql.NVarChar(200),await hashPassword(senha)).query('UPDATE dbo.Usuarios SET Senha=@senha WHERE Id=@id AND Senha=@old');
     }
+    if (user.PrimeiroAcesso) return res.json({ primeiroAcesso: true, tokenPrimeiroAcesso: jwt.sign({id:user.Id, finalidade:'primeiro-acesso'}, SECRET, {expiresIn:'10m', algorithm:'HS256'}) });
     return res.json({ token: tokenFor(user), user: { id: user.Id, nome: user.Nome, email: user.Email, perfil: user.Perfil } });
   } catch (e) { return res.status(500).json({ message: 'Erro ao autenticar.' }); }
+});
+
+// Primeiro acesso: token limitado e senha temporaria obrigatoria.
+app.post('/api/auth/primeiro-acesso', async (req,res) => {
+  const {tokenPrimeiroAcesso, senhaTemporaria, novaSenha} = req.body || {};
+  if (typeof senhaTemporaria !== 'string' || typeof novaSenha !== 'string' || novaSenha.length < 8 || novaSenha.length > 128 || novaSenha === senhaTemporaria) return res.status(400).json({message:'Informe uma nova senha diferente da temporaria, de 8 a 128 caracteres.'});
+  let claims;
+  try { claims = jwt.verify(tokenPrimeiroAcesso, SECRET, {algorithms:['HS256']}); } catch { return res.status(401).json({message:'Token invalido ou expirado.'}); }
+  if (claims.finalidade !== 'primeiro-acesso') return res.status(401).json({message:'Token invalido.'});
+  let tx;
+  try {
+    tx = new sql.Transaction(await getPool()); await tx.begin();
+    const r = await new sql.Request(tx).input('id',sql.Int,claims.id).query('SELECT Id,Nome,Email,Perfil,Senha,Ativo,PrimeiroAcesso FROM dbo.Usuarios WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id');
+    const u = r.recordset[0];
+    if (!u || !u.Ativo || !u.PrimeiroAcesso || !(await verifyPassword(senhaTemporaria,u.Senha))) { await tx.rollback(); return res.status(403).json({message:'Primeiro acesso indisponivel ou senha incorreta.'}); }
+    const codigo = newRecoveryCode();
+    await new sql.Request(tx).input('id',sql.Int,u.Id).input('senha',sql.NVarChar(200),await hashPassword(novaSenha)).query('UPDATE dbo.Usuarios SET Senha=@senha, PrimeiroAcesso=0 WHERE Id=@id');
+    await new sql.Request(tx).input('id',sql.Int,u.Id).input('digest',sql.Char(64),codeDigest(codigo)).query('DELETE FROM dbo.CodigosRecuperacao WHERE UsuarioId=@id; INSERT INTO dbo.CodigosRecuperacao (UsuarioId,CodigoHash) VALUES (@id,@digest);');
+    await tx.commit();
+    return res.json({token:tokenFor(u),user:{id:u.Id,nome:u.Nome,email:u.Email,perfil:u.Perfil},codigoRecuperacao:codigo});
+  } catch(e) { if(tx) {try{await tx.rollback();}catch{}} return res.status(500).json({message:'Erro ao concluir primeiro acesso.'}); }
 });
 
 // Recuperacao por codigo pessoal. A consulta e a alteracao ocorrem na mesma transacao.
@@ -108,14 +131,14 @@ app.post('/api/auth/recover', async (req, res) => {
     tx = new sql.Transaction(pool);
     await tx.begin();
     const r = await new sql.Request(tx).input('email', sql.NVarChar(200), email)
-      .query(`SELECT TOP 1 u.Id, u.Ativo, r.CodigoHash, r.Tentativas,
+      .query(`SELECT TOP 1 u.Id, u.Ativo, u.PrimeiroAcesso, r.CodigoHash, r.Tentativas,
                      r.BloqueadoAte
               FROM dbo.Usuarios u WITH (UPDLOCK, HOLDLOCK)
               LEFT JOIN dbo.CodigosRecuperacao r WITH (UPDLOCK, HOLDLOCK) ON r.UsuarioId=u.Id
               WHERE u.Email=@email`);
     const user = r.recordset[0];
     const invalid = { message: 'Nao foi possivel recuperar a conta. Confira o email e o codigo.' };
-    if (!user || !user.Ativo || !user.CodigoHash) {
+    if (!user || !user.Ativo || user.PrimeiroAcesso || !user.CodigoHash) {
       await tx.commit(); return res.status(400).json(invalid);
     }
     if (user.BloqueadoAte && new Date(user.BloqueadoAte).getTime() > Date.now()) {

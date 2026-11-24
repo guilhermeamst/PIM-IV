@@ -7,12 +7,14 @@ async function auth(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Token nao informado.' });
 
   try {
-    const claims = jwt.verify(token, require('./jwtSecret'));
+    const claims = jwt.verify(token, require('./jwtSecret'), { algorithms: ['HS256'] })
+    if (claims.finalidade) return res.status(403).json({ message: 'Token restrito ao primeiro acesso.' });
     const pool = await getPool();
     const result = await pool.request().input('id', sql.Int, claims.id)
-      .query('SELECT TOP 1 Id, Nome, Email, Perfil, Ativo FROM dbo.Usuarios WHERE Id=@id');
+      .query('SELECT TOP 1 Id, Nome, Email, Perfil, Ativo, PrimeiroAcesso FROM dbo.Usuarios WHERE Id=@id');
     const account = result.recordset[0];
     if (!account || !account.Ativo) return res.status(401).json({ message: 'Conta inexistente ou inativa.' });
+    if (account.PrimeiroAcesso) return res.status(403).json({ message: 'Conclua o primeiro acesso.' });
     req.user = { id: account.Id, nome: account.Nome, email: account.Email, perfil: account.Perfil };
     next();
   } catch {
