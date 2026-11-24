@@ -8,17 +8,26 @@ export default function RegisterScreen({ navigation }) {
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [loading, setLoading] = useState(false);
+  const [codigo, setCodigo] = useState('');
   async function cadastrar() {
     if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) return Alert.alert('Cadastro', 'Preencha todos os campos.');
     if (senha !== confirmarSenha) return Alert.alert('Cadastro', 'As senhas não conferem.');
+    if (senha.length < 8) return Alert.alert('Cadastro', 'A senha deve ter pelo menos 8 caracteres.');
     setLoading(true);
     try {
-      await api.post('/auth/register', { nome: nome.trim(), email: email.trim(), senha, confirmarSenha });
-      Alert.alert('Conta criada', 'Sua conta de aluno foi criada. Entre com seu e-mail e senha.', [ { text: 'Entrar', onPress: () => navigation.navigate('Login') } ]);
+      const { data } = await api.post('/auth/register', { nome: nome.trim(), email: email.trim(), senha, confirmarSenha });
+      if (data.codigoRecuperacao) setCodigo(data.codigoRecuperacao);
+      else Alert.alert('Conta criada', 'A API não retornou o código. Procure o administrador.', [{ text: 'Entrar', onPress: () => navigation.navigate('Login') }]);
     } catch (error) {
       Alert.alert('Cadastro', error.response?.data?.message || 'Não foi possível criar sua conta.');
     } finally { setLoading(false); }
   }
+  if (codigo) return <View style={[styles.container, styles.content]}>
+    <Text style={styles.title}>Conta criada!</Text>
+    <Text style={styles.subtitle}>Guarde seu código de recuperação em um local seguro. Ele não poderá ser consultado depois.</Text>
+    <Text selectable style={[styles.title, {fontSize: 23, marginBottom: 24}]}>{codigo}</Text>
+    <Pressable style={styles.button} onPress={() => navigation.navigate('Login')}><Text style={styles.buttonText}>Já guardei o código</Text></Pressable>
+  </View>;
   return <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Criar conta</Text><Text style={styles.subtitle}>Cadastro gratuito para alunos</Text>

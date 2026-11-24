@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   View,
+  ScrollView,
 } from 'react-native';
 
 import api from '../services/api';
@@ -16,43 +17,49 @@ export default function RecoverScreen({ navigation }) {
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
+  const [codigo, setCodigo] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const [novoCodigo, setNovoCodigo] = useState('');
+  const [loading, setLoading] = useState(false);
   async function recuperar() {
+    if (!email.trim() || !/^[A-Z2-9]{16}$/.test(codigo.toUpperCase().replace(/[-\s]/g, '')) || senha.length < 8 || senha !== confirmacao) return Alert.alert('Atenção', 'Informe e-mail, código válido e senhas iguais de pelo menos 8 caracteres.');
+    setLoading(true);
     try {
       const response = await api.post(
         '/auth/recover',
         {
-          email,
+          email: email.trim(),
+          codigoRecuperacao: codigo,
           novaSenha: senha,
         }
       );
 
-      Alert.alert(
-        'Sucesso',
-        response.data.message,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (response.data.codigoRecuperacao) setNovoCodigo(response.data.codigoRecuperacao);
+      else Alert.alert('Senha redefinida', 'A API não retornou o novo código. Procure o administrador.', [{text:'OK', onPress: () => navigation.goBack()}]);
     } catch (error) {
       Alert.alert(
         'Erro',
         error.response?.data?.message ||
           'Falha ao conectar.'
       );
-    }
+    } finally { setLoading(false); }
   }
 
+  if (novoCodigo) return <View style={styles.container}>
+    <Text style={styles.title}>Senha redefinida</Text>
+    <Text style={styles.help}>O código anterior foi invalidado. Guarde o novo código:</Text>
+    <Text selectable style={[styles.title, {fontSize: 22, marginBottom: 24}]}>{novoCodigo}</Text>
+    <Pressable style={styles.button} onPress={() => navigation.goBack()}><Text style={styles.buttonText}>Já guardei o código</Text></Pressable>
+  </View>;
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>
         Recuperar senha
       </Text>
 
       <Text style={styles.help}>
-        Informe o email cadastrado e a nova senha.
+        Informe o e-mail cadastrado, o código de recuperação e a nova senha.
       </Text>
 
       <TextInput
@@ -64,6 +71,7 @@ export default function RecoverScreen({ navigation }) {
         onChangeText={setEmail}
       />
 
+      <TextInput style={styles.input} placeholder="Código de recuperação" value={codigo} onChangeText={setCodigo} autoCapitalize="characters" autoCorrect={false} />
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.passwordInput}
@@ -86,15 +94,17 @@ export default function RecoverScreen({ navigation }) {
         )}
       </View>
 
+      <TextInput style={styles.input} placeholder="Confirmar nova senha" value={confirmacao} onChangeText={setConfirmacao} secureTextEntry={!mostrarSenha} maxLength={128} />
       <Pressable
+        disabled={loading}
         style={styles.button}
         onPress={recuperar}
       >
         <Text style={styles.buttonText}>
-          Redefinir senha
+          {loading ? 'Redefinindo...' : 'Redefinir senha'}
         </Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 

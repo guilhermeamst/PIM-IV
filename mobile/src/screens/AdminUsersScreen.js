@@ -30,14 +30,16 @@ export default function AdminUsersScreen() {
   const [senha, setSenha] = useState('');
   const [perfil, setPerfil] = useState('ALUNO');
   const [saving, setSaving] = useState(false);
+  const [codigoCriado, setCodigoCriado] = useState('');
   async function criarUsuario() {
     if (!nome.trim() || !email.trim() || !senha) return Alert.alert('Cadastro', 'Preencha todos os campos.');
     setSaving(true);
     try {
-      await api.post('/admin/usuarios', { nome: nome.trim(), email: email.trim(), senha, perfil });
+      const { data: created } = await api.post('/admin/usuarios', { nome: nome.trim(), email: email.trim(), senha, perfil });
       setModal(false); setNome(''); setEmail(''); setSenha(''); setPerfil('ALUNO');
       await load(busca);
-      Alert.alert('Sucesso', 'Usuário cadastrado.');
+      if (created.codigoRecuperacao) setCodigoCriado(created.codigoRecuperacao);
+      else Alert.alert('Sucesso', 'Usuário cadastrado, mas a API não retornou o código.');
     } catch (error) { Alert.alert('Cadastro', error.response?.data?.message || 'Erro ao cadastrar usuário.'); }
     finally { setSaving(false); }
   }
@@ -106,6 +108,14 @@ export default function AdminUsersScreen() {
       </Text>
 
       <Pressable style={styles.addButton} onPress={() => setModal(true)}><Text style={styles.addText}>+ Criar usuário</Text></Pressable>
+      <Modal visible={!!codigoCriado} animationType="slide" onRequestClose={() => setCodigoCriado('')}>
+        <View style={styles.modalContent}>
+          <Text style={styles.title}>Usuário cadastrado</Text>
+          <Text style={{marginVertical: 20}}>Entregue este código ao usuário de forma segura. Ele não poderá ser consultado depois.</Text>
+          <Text selectable style={{fontSize: 23, fontWeight: '700'}}>{codigoCriado}</Text>
+          <Pressable style={styles.addButton} onPress={() => setCodigoCriado('')}><Text style={styles.addText}>Concluir</Text></Pressable>
+        </View>
+      </Modal>
       <Modal visible={modal} animationType="slide" onRequestClose={() => setModal(false)}>
         <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Novo usuário</Text>

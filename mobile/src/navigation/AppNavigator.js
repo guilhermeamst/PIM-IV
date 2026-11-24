@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 import RecoverScreen from '../screens/RecoverScreen';
 import CoursesScreen from '../screens/CoursesScreen';
 import CourseDetailsScreen from '../screens/CourseDetailsScreen';
@@ -118,6 +119,7 @@ export default function AppNavigator() {
                 headerShown: false,
               }}
             />
+            <Stack.Screen name="Cadastro" component={RegisterScreen} options={{ title: 'Criar conta' }} />
             <Stack.Screen
               name="RecuperarSenha"
               component={RecoverScreen}

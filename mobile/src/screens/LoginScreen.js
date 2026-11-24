@@ -114,8 +114,9 @@ export default function LoginScreen({ navigation }) {
             Esqueci minha senha
           </Text>
         </Pressable>
-
-
+        <Pressable onPress={() => navigation.navigate('Cadastro')}>
+          <Text style={styles.link}>Não tem uma conta? Cadastre-se</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
