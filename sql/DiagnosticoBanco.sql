@@ -1,4 +1,4 @@
-/*
+﻿/*
   DIAGNOSTICO DO BANCO - PLATAFORMA DE CURSOS
 
   Este script e somente de consulta. Ele NAO cria, altera ou exclui dados,
@@ -21,6 +21,12 @@ WITH ColunasEsperadas AS (
         ('Usuarios', 'Senha'),
         ('Usuarios', 'Perfil'),
         ('Usuarios', 'Ativo'),
+        ('Usuarios', 'PrimeiroAcesso'),
+        ('Aulas', 'Conteudo'),
+        ('CodigosRecuperacao', 'UsuarioId'),
+        ('CodigosRecuperacao', 'CodigoHash'),
+        ('CodigosRecuperacao', 'Tentativas'),
+        ('CodigosRecuperacao', 'BloqueadoAte'),
         ('Cursos', 'Id'),
         ('Cursos', 'Titulo'),
         ('Cursos', 'Descricao'),
