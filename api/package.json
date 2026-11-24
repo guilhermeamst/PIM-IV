@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "node --test test/*.test.js",
-    "test:unit": "node --test test/permissions.test.js test/accountSecurity.test.js",
+    "test:unit": "node --test test/permissions.test.js test/accountSecurity.test.js test/lessonValidation.test.js",
     "test:integration": "node --test test/api.integration.test.js",
     "test:report": "node test/report.cjs"
   },

@@ -123,7 +123,7 @@ function executeQuery(statement, values) {
   }
   if (query.includes('from dbo.usuarios') && query.replace(/\s/g, '').includes('whereid=@id')) {
     const user = users.find((item) => item.Id === values.id);
-    return { recordset: user ? [{ Id: user.Id, Nome: user.Nome, Email: user.Email, Perfil: user.Perfil, Ativo: user.Ativo }] : [] };
+    return { recordset: user ? [{ ...user }] : [] };
   }
   if (query.includes('from dbo.cursos c') && query.includes('where c.professorid = @professorid')) {
     return { recordset: courses.filter((course) => course.ProfessorId === values.professorId).map((course) => ({ id: course.Id, titulo: course.Titulo, descricao: course.Descricao, cargaHoraria: course.CargaHoraria, ativo: course.Ativo, totalAulas: lessons.filter((item) => item.CursoId === course.Id).length, totalAlunos: enrollments.filter((item) => item.CursoId === course.Id).length })) };
@@ -163,6 +163,10 @@ function executeQuery(statement, values) {
       enrollments.push({ Id: enrollments.length + 1, CursoId: values.cursoId, UsuarioId: values.usuarioId });
     }
     return empty;
+  }
+  if (query.includes('from dbo.aulas a join dbo.cursos c') && query.includes('c.ativo=1')) {
+    const lesson = lessons.find(item => item.Id === values.aulaId && item.CursoId === values.cursoId && courses.some(c => c.Id === item.CursoId && c.Ativo));
+    return { recordset: lesson ? [{ Id: lesson.Id }] : [] };
   }
   if (query.includes('from dbo.aulas') && query.includes('where id = @aulaid and cursoid = @cursoid')) {
     const lesson = lessons.find((item) => item.Id === values.aulaId && item.CursoId === values.cursoId);
@@ -251,10 +255,11 @@ test('ALUNO consulta catalogo e nao visualiza cursos inativos', async () => {
   assert.deepEqual(result.data.map((item) => item.id), [10, 12]);
 });
 
-test('PROFESSOR nao pode acessar catalogo exclusivo de ALUNO', async () => {
+test('PROFESSOR pode consultar catalogo de cursos ativos', async () => {
   const token = await login('professor@escola.com', 'professor123');
   const result = await request('/api/cursos', { token });
-  assert.equal(result.status, 403);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.data.map(item => item.id), [10, 12]);
 });
 
 test('permissao usa o perfil atual do banco, nao o perfil antigo do token', async () => {
@@ -336,3 +341,31 @@ test('rota inexistente retorna 404', async () => {
   const result = await request('/api/nao-existe');
   assert.equal(result.status, 404);
 });
+
+ test('token anterior deixa de funcionar apos troca de senha', async () => {
+ const token = await login('maria@escola.com', 'aluno123');
+ const user = users.find(u => u.Id === 3); const old = user.Senha;
+ try { user.Senha = await require('../src/accountSecurity').hashPassword('novaSenha123');
+ assert.equal((await request('/api/cursos', {token})).status, 401); }
+ finally { user.Senha = old; }
+ });
+ test('conta desativada perde acesso com token existente', async () => {
+ const token = await login('maria@escola.com', 'aluno123'); const user = users.find(u => u.Id === 3);
+ try { user.Ativo = false; assert.equal((await request('/api/cursos', {token})).status, 401); }
+ finally { user.Ativo = true; }
+ });
+ test('primeiro acesso emite token restrito e bloqueia token normal anterior', async () => {
+ const token = await login('maria@escola.com', 'aluno123'); const user = users.find(u => u.Id === 3);
+ try { user.PrimeiroAcesso = true;
+ const result = await request('/api/auth/login', {method:'POST',body:{email:user.Email,senha:'aluno123'}});
+ assert.equal(result.status,200); assert.equal(result.data.primeiroAcesso,true); assert.ok(result.data.tokenPrimeiroAcesso); assert.equal(result.data.token,undefined);
+ assert.equal((await request('/api/cursos',{token:result.data.tokenPrimeiroAcesso})).status,403);
+ assert.equal((await request('/api/cursos',{token})).status,403);
+ } finally { user.PrimeiroAcesso = false; }
+ });
+ test('primeiro acesso rejeita token normal e senha igual', async () => {
+ const token = await login('maria@escola.com','aluno123');
+ const body = {tokenPrimeiroAcesso:token,senhaTemporaria:'aluno123',novaSenha:'novaSenha123'};
+ assert.equal((await request('/api/auth/primeiro-acesso',{method:'POST',body})).status,401);
+ assert.equal((await request('/api/auth/primeiro-acesso',{method:'POST',body:{...body,novaSenha:'aluno123'}})).status,400);
+ });
