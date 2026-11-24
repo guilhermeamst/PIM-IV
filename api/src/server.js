@@ -1,3 +1,4 @@
+const { validateLesson } = require('./lessonValidation');
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -206,9 +207,9 @@ app.delete('/api/admin/cursos/:id', auth, adminOnly, async (req,res)=>{
 
 // ---------------- ADMIN: AULAS ----------------
 app.post('/api/admin/cursos/:cursoId/aulas', auth, adminOnly, async (req,res)=>{
-  const cursoId=Number(req.params.cursoId); const {titulo,duracaoMin}=req.body;
-  if(!titulo)return res.status(400).json({message:'Titulo obrigatorio.'});
-  try{const pool=await getPool();const r=await pool.request().input('cursoId',sql.Int,cursoId).input('titulo',sql.NVarChar(300),titulo).input('duracao',sql.Int,Number(duracaoMin)||0).query(`DECLARE @ordem INT=(SELECT ISNULL(MAX(Ordem),0)+1 FROM dbo.Aulas WHERE CursoId=@cursoId); INSERT INTO dbo.Aulas(CursoId,Titulo,Ordem,DuracaoMin) OUTPUT INSERTED.Id VALUES(@cursoId,@titulo,@ordem,@duracao)`);res.status(201).json({id:r.recordset[0].Id,message:'Aula criada.'});}catch(e){res.status(500).json({message:'Erro ao criar aula.'});}
+ const cursoId=validId(req.params.cursoId), lesson=validateLesson(req.body);
+ if(!cursoId||!lesson)return res.status(400).json({message:'Dados de aula invalidos.'});
+ try { const pool=await getPool(); const r=await pool.request().input('cursoId',sql.Int,cursoId).input('titulo',sql.NVarChar(300),lesson.titulo).input('duracao',sql.Int,lesson.duracaoMin).input('conteudo',sql.NVarChar(sql.MAX),lesson.conteudo).query(`INSERT INTO dbo.Aulas(CursoId,Titulo,Ordem,DuracaoMin,Conteudo) OUTPUT INSERTED.Id SELECT c.Id,@titulo,(SELECT ISNULL(MAX(Ordem),0)+1 FROM dbo.Aulas WHERE CursoId=c.Id),@duracao,@conteudo FROM dbo.Cursos c WHERE c.Id=@cursoId`); if(!r.recordset.length)return res.status(404).json({message:'Curso nao encontrado.'}); return res.status(201).json({id:r.recordset[0].Id,message:'Aula criada.'}); } catch(e){return res.status(500).json({message:'Erro ao criar aula.'});}
 });
 
 app.delete('/api/admin/aulas/:id', auth, adminOnly, async (req,res)=>{try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,Number(req.params.id)).query('DELETE FROM dbo.Aulas WHERE Id=@id');if(!r.rowsAffected[0])return res.status(404).json({message:'Aula nao encontrada.'});res.json({message:'Aula excluida.'});}catch(e){res.status(500).json({message:'Erro ao excluir aula.'});}});
@@ -259,25 +260,24 @@ app.put('/api/admin/usuarios/:id', auth, adminOnly, async (req,res) => {
   }catch(e){return res.status(e.number===2627||e.number===2601?409:500).json({message:'Erro ao atualizar usuario.'});}
 });
 app.put('/api/admin/aulas/:id',auth,adminOnly,async(req,res)=>{
-  const id=validId(req.params.id),{titulo,duracaoMin}=req.body||{};
-  if(!id||typeof titulo!=='string'||!titulo.trim()||!Number.isInteger(Number(duracaoMin))||Number(duracaoMin)<0)return res.status(400).json({message:'Dados de aula invalidos.'});
-  try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('titulo',sql.NVarChar(300),titulo.trim()).input('duracao',sql.Int,Number(duracaoMin)).query('UPDATE dbo.Aulas SET Titulo=@titulo,DuracaoMin=@duracao WHERE Id=@id');return r.rowsAffected[0]?res.json({message:'Aula atualizada.'}):res.status(404).json({message:'Aula nao encontrada.'});}
-  catch(e){return res.status(500).json({message:'Erro ao atualizar aula.'});}
+ const id=validId(req.params.id), lesson=validateLesson(req.body);
+ if(!id||!lesson)return res.status(400).json({message:'Dados de aula invalidos.'});
+ try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('titulo',sql.NVarChar(300),lesson.titulo).input('duracao',sql.Int,lesson.duracaoMin).input('conteudo',sql.NVarChar(sql.MAX),lesson.conteudo).input('hasContent',sql.Bit,lesson.hasContent).query('UPDATE dbo.Aulas SET Titulo=@titulo,DuracaoMin=@duracao,Conteudo=CASE WHEN @hasContent=1 THEN @conteudo ELSE Conteudo END WHERE Id=@id');return r.rowsAffected[0]?res.json({message:'Aula atualizada.'}):res.status(404).json({message:'Aula nao encontrada.'});}catch(e){return res.status(500).json({message:'Erro ao atualizar aula.'});}
 });
 app.get('/api/aulas/:id',auth,async(req,res)=>{
  const id=validId(req.params.id);if(!id)return res.status(400).json({message:'ID invalido.'});
- try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('usuarioId',sql.Int,req.user.id).query(`SELECT a.Id AS id,a.CursoId AS cursoId,a.Titulo AS titulo,a.Ordem AS ordem,a.DuracaoMin AS duracaoMin,CASE WHEN p.Id IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END AS concluida,c.Ativo AS ativo,c.ProfessorId AS professorId FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId LEFT JOIN dbo.Progresso p ON p.AulaId=a.Id AND p.UsuarioId=@usuarioId WHERE a.Id=@id`);
- const a=r.recordset[0];if(!a || (req.user.perfil==='ALUNO'&&!a.ativo) || (req.user.perfil==='PROFESSOR'&&a.professorId!==req.user.id))return res.status(404).json({message:'Aula nao encontrada.'});delete a.ativo;delete a.professorId;return res.json(a);
+ try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('usuarioId',sql.Int,req.user.id).query(`SELECT a.Id AS id,a.CursoId AS cursoId,a.Titulo AS titulo,a.Ordem AS ordem,a.DuracaoMin AS duracaoMin,a.Conteudo AS conteudo,CASE WHEN p.Id IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END AS concluida,c.Ativo AS ativo,c.ProfessorId AS professorId FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId LEFT JOIN dbo.Progresso p ON p.AulaId=a.Id AND p.UsuarioId=@usuarioId WHERE a.Id=@id`);
+ const a=r.recordset[0];if(!a || (req.user.perfil==='ALUNO'&&!a.ativo) || (req.user.perfil==='PROFESSOR'&&a.professorId!==req.user.id))return res.status(404).json({message:'Aula nao encontrada.'});if(req.user.perfil==='ALUNO'){const m=await pool.request().input('cursoId',sql.Int,a.cursoId).input('usuarioId',sql.Int,req.user.id).query('SELECT Id FROM dbo.Matriculas WHERE CursoId=@cursoId AND UsuarioId=@usuarioId');if(!m.recordset.length)return res.status(403).json({message:'Matricule-se para acessar a aula.'});}delete a.ativo;delete a.professorId;return res.json(a);
  }catch(e){return res.status(500).json({message:'Erro ao carregar aula.'});}
 });
 app.get('/api/progresso/alunos/:id',auth,staffOnly,async(req,res)=>{
  const id=validId(req.params.id);if(!id)return res.status(400).json({message:'ID invalido.'});
- try{const pool=await getPool();const r=await pool.request().input('alunoId',sql.Int,id).input('professorId',sql.Int,req.user.perfil==='PROFESSOR'?req.user.id:0).query(`SELECT c.Id AS id,c.Titulo AS titulo,c.Descricao AS descricao,c.CargaHoraria AS cargaHoraria,c.Ativo AS ativo,COUNT(a.Id) AS totalAulas,COUNT(p.Id) AS concluidas,CASE WHEN COUNT(a.Id)=0 THEN 0 ELSE CAST(ROUND(COUNT(p.Id)*100.0/COUNT(a.Id),0) AS INT) END AS progresso,CASE WHEN EXISTS(SELECT 1 FROM dbo.Matriculas m WHERE m.CursoId=c.Id AND m.UsuarioId=@alunoId) THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS matriculado FROM dbo.Cursos c LEFT JOIN dbo.Aulas a ON a.CursoId=c.Id LEFT JOIN dbo.Progresso p ON p.AulaId=a.Id AND p.UsuarioId=@alunoId WHERE c.Ativo=1 AND (@professorId=0 OR c.ProfessorId=@professorId) GROUP BY c.Id,c.Titulo,c.Descricao,c.CargaHoraria,c.Ativo ORDER BY c.Titulo`);return res.json(r.recordset);
+ try{const pool=await getPool();const r=await pool.request().input('alunoId',sql.Int,id).input('professorId',sql.Int,req.user.perfil==='PROFESSOR'?req.user.id:0).query(`SELECT c.Id AS id,c.Titulo AS titulo,c.Descricao AS descricao,c.CargaHoraria AS cargaHoraria,c.Ativo AS ativo,COUNT(a.Id) AS totalAulas,COUNT(p.Id) AS concluidas,CASE WHEN COUNT(a.Id)=0 THEN 0 ELSE CAST(ROUND(COUNT(p.Id)*100.0/COUNT(a.Id),0) AS INT) END AS progresso,CASE WHEN EXISTS(SELECT 1 FROM dbo.Matriculas m WHERE m.CursoId=c.Id AND m.UsuarioId=@alunoId) THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS matriculado FROM dbo.Cursos c LEFT JOIN dbo.Aulas a ON a.CursoId=c.Id LEFT JOIN dbo.Progresso p ON p.AulaId=a.Id AND p.UsuarioId=@alunoId WHERE EXISTS(SELECT 1 FROM dbo.Usuarios u WHERE u.Id=@alunoId AND u.Perfil='ALUNO') AND (@professorId=0 OR (c.ProfessorId=@professorId AND EXISTS(SELECT 1 FROM dbo.Matriculas m WHERE m.CursoId=c.Id AND m.UsuarioId=@alunoId))) GROUP BY c.Id,c.Titulo,c.Descricao,c.CargaHoraria,c.Ativo ORDER BY c.Titulo`);return res.json(r.recordset);
  }catch(e){return res.status(500).json({message:'Erro ao carregar progresso.'});}
 });
 app.get('/api/gamificacao/alunos/:id',auth,staffOnly,async(req,res)=>{
  const id=validId(req.params.id);if(!id)return res.status(400).json({message:'ID invalido.'});
- try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).query(`SELECT u.Id AS id,u.Nome AS nome,ISNULL(g.XP,0) AS xp,CAST(FLOOR(ISNULL(g.XP,0)/100.0) AS INT)+1 AS nivel,ISNULL(g.SequenciaAtual,0) AS sequenciaAtual,ISNULL(g.MelhorSequencia,0) AS melhorSequencia FROM dbo.Usuarios u LEFT JOIN dbo.Gamificacao g ON g.UsuarioId=u.Id WHERE u.Id=@id AND u.Perfil='ALUNO'`);return r.recordset.length?res.json(r.recordset[0]):res.status(404).json({message:'Aluno nao encontrado.'});
+ try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('professorId',sql.Int,req.user.perfil==='PROFESSOR'?req.user.id:0).query(`SELECT u.Id AS id,u.Nome AS nome,ISNULL(g.XP,0) AS xp,CAST(FLOOR(ISNULL(g.XP,0)/100.0) AS INT)+1 AS nivel,ISNULL(g.SequenciaAtual,0) AS sequenciaAtual,ISNULL(g.MelhorSequencia,0) AS melhorSequencia FROM dbo.Usuarios u LEFT JOIN dbo.Gamificacao g ON g.UsuarioId=u.Id WHERE u.Id=@id AND u.Perfil='ALUNO' AND (@professorId=0 OR EXISTS(SELECT 1 FROM dbo.Matriculas m JOIN dbo.Cursos c ON c.Id=m.CursoId WHERE m.UsuarioId=u.Id AND c.ProfessorId=@professorId))`);return r.recordset.length?res.json(r.recordset[0]):res.status(404).json({message:'Aluno nao encontrado.'});
  }catch(e){return res.status(500).json({message:'Erro ao consultar gamificacao.'});}
 });
 

@@ -11,7 +11,7 @@ function validId(value) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-router.get('/', auth, studentOnly, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   const termo = typeof req.query.busca === 'string'
     ? req.query.busca.trim()
     : '';
@@ -180,7 +180,7 @@ router.put('/:cursoId/aulas/:aulaId/progresso', auth, studentOnly, async (req, r
     const check = await pool.request()
       .input('aulaId', sql.Int, aulaId)
       .input('cursoId', sql.Int, cursoId)
-      .query('SELECT Id FROM dbo.Aulas WHERE Id = @aulaId AND CursoId = @cursoId');
+      .query('SELECT a.Id FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId WHERE a.Id = @aulaId AND a.CursoId = @cursoId AND c.Ativo=1');
 
     if (!check.recordset[0]) {
       return res.status(404).json({ message: 'Aula nao encontrada.' });

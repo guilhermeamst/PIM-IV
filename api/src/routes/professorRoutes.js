@@ -1,3 +1,4 @@
+const { validateLesson } = require('../lessonValidation');
 const express = require('express');
 const { sql, getPool } = require('../db');
 const { auth, professorOnly } = require('../middleware');
@@ -119,7 +120,7 @@ router.get('/cursos/:id/aulas', async (req, res) => {
       .input('cursoId', sql.Int, cursoId)
       .input('professorId', sql.Int, req.user.id)
       .query(`
-        SELECT a.Id AS id, a.Titulo AS titulo, a.Ordem AS ordem, a.DuracaoMin AS duracaoMin
+        SELECT a.Id AS id, a.Titulo AS titulo, a.Ordem AS ordem, a.DuracaoMin AS duracaoMin, a.Conteudo AS conteudo
         FROM dbo.Aulas a
         INNER JOIN dbo.Cursos c ON c.Id = a.CursoId
         WHERE c.Id = @cursoId AND c.ProfessorId = @professorId
@@ -143,12 +144,9 @@ router.get('/cursos/:id/aulas', async (req, res) => {
 
 router.post('/cursos/:id/aulas', async (req, res) => {
   const cursoId = validId(req.params.id);
-  const titulo = typeof req.body.titulo === 'string' ? req.body.titulo.trim() : '';
-  const duracaoMin = Number(req.body.duracaoMin);
-
-  if (!cursoId) return res.status(400).json({ message: 'Identificador de curso invalido.' });
-  if (!titulo || titulo.length > 300) return res.status(400).json({ message: 'Informe um titulo de aula com no maximo 300 caracteres.' });
-  if (!Number.isInteger(duracaoMin) || duracaoMin < 0) return res.status(400).json({ message: 'A duracao deve ser um numero inteiro igual ou maior que zero.' });
+  const lesson = validateLesson(req.body);
+  if (!cursoId || !lesson) return res.status(400).json({message:'Dados de aula invalidos.'});
+  const {titulo,duracaoMin,conteudo}=lesson;
 
   try {
     const pool = await getPool();
@@ -165,17 +163,26 @@ router.post('/cursos/:id/aulas', async (req, res) => {
       .input('cursoId', sql.Int, cursoId)
       .input('titulo', sql.NVarChar(300), titulo)
       .input('duracaoMin', sql.Int, duracaoMin)
+      .input('conteudo', sql.NVarChar(sql.MAX), conteudo)
+      .input('professorId', sql.Int, req.user.id)
       .query(`
         DECLARE @ordem INT = (SELECT ISNULL(MAX(Ordem), 0) + 1 FROM dbo.Aulas WHERE CursoId = @cursoId);
-        INSERT INTO dbo.Aulas (CursoId, Titulo, Ordem, DuracaoMin)
+        INSERT INTO dbo.Aulas (CursoId, Titulo, Ordem, DuracaoMin, Conteudo)
         OUTPUT INSERTED.Id
-        VALUES (@cursoId, @titulo, @ordem, @duracaoMin);
+        SELECT @cursoId, @titulo, @ordem, @duracaoMin, @conteudo FROM dbo.Cursos WHERE Id=@cursoId AND ProfessorId=@professorId;
       `);
 
+    if (!result.recordset.length) return res.status(404).json({message:'Curso nao encontrado.'});
     res.status(201).json({ id: result.recordset[0].Id, message: 'Aula criada.' });
   } catch (error) {
     res.status(500).json({ message: 'Erro ao criar aula.' });
   }
+});
+
+router.put('/aulas/:id', async (req,res)=>{
+ const id=validId(req.params.id), lesson=validateLesson(req.body);
+ if(!id||!lesson)return res.status(400).json({message:'Dados de aula invalidos.'});
+ try{const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('professorId',sql.Int,req.user.id).input('titulo',sql.NVarChar(300),lesson.titulo).input('duracao',sql.Int,lesson.duracaoMin).input('conteudo',sql.NVarChar(sql.MAX),lesson.conteudo).input('hasContent',sql.Bit,lesson.hasContent).query(`UPDATE a SET Titulo=@titulo,DuracaoMin=@duracao,Conteudo=CASE WHEN @hasContent=1 THEN @conteudo ELSE a.Conteudo END FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId WHERE a.Id=@id AND c.ProfessorId=@professorId`);return r.rowsAffected[0]?res.json({message:'Aula atualizada.'}):res.status(404).json({message:'Aula nao encontrada ou voce nao e o responsavel.'});}catch(e){return res.status(500).json({message:'Erro ao atualizar aula.'});}
 });
 
 router.delete('/aulas/:id', async (req, res) => {
