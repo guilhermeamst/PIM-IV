@@ -17,6 +17,7 @@ const LEGACY_DEMO_KEY = '@cursos:demo';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [firstAccess, setFirstAccess] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,6 +76,14 @@ export function AuthProvider({ children }) {
       senha,
     });
 
+    if (data?.primeiroAcesso && data.tokenPrimeiroAcesso) {
+      setFirstAccess(data.tokenPrimeiroAcesso);
+      return;
+    }
+    await startSession(data);
+  }
+
+  async function startSession(data) {
     if (!data?.token || !data?.user) {
       throw new Error('A API não retornou uma sessão válida.');
     }
@@ -85,16 +94,24 @@ export function AuthProvider({ children }) {
     ]);
 
     await AsyncStorage.removeItem(LEGACY_DEMO_KEY);
+    setFirstAccess(null);
     setUser(data.user);
+  }
+
+  async function completeFirstAccess(senhaTemporaria, novaSenha) {
+    const {data} = await api.post('/auth/primeiro-acesso', {tokenPrimeiroAcesso: firstAccess, senhaTemporaria, novaSenha});
+    if (!data?.token || !data?.user || !data?.codigoRecuperacao) throw new Error('Resposta de primeiro acesso incompleta.');
+    return data;
   }
 
   async function logout() {
     await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY, LEGACY_DEMO_KEY]);
+    setFirstAccess(null);
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, firstAccess, completeFirstAccess, startSession }}>
       {children}
     </AuthContext.Provider>
   );

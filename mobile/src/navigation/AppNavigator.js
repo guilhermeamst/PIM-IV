@@ -20,6 +20,8 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 
+import FirstAccessScreen from '../screens/FirstAccessScreen';
+import AdminStudentProgressScreen from '../screens/AdminStudentProgressScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import RecoverScreen from '../screens/RecoverScreen';
@@ -97,7 +99,7 @@ function ProfessorTabs() {
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, firstAccess } = useAuth();
 
   if (loading) {
     return (
@@ -110,7 +112,9 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        {!user ? (
+        {firstAccess ? (
+          <Stack.Screen name="PrimeiroAcesso" component={FirstAccessScreen} options={{title: "Primeiro acesso", headerBackVisible: false}} />
+        ) : !user ? (
           <>
             <Stack.Screen
               name="Login"
@@ -138,6 +142,7 @@ export default function AppNavigator() {
               }}
             />
 
+            <Stack.Screen name="AdminAlunoProgresso" component={AdminStudentProgressScreen} options={{title: "Progresso do aluno"}} />
             <Stack.Screen
               name="AdminCurso"
               component={AdminCourseScreen}

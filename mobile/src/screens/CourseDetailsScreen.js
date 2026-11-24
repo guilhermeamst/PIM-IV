@@ -5,6 +5,8 @@ import React, {
 
 import {
   Alert,
+  Modal,
+  Pressable,
   TouchableOpacity,
   RefreshControl,
   ScrollView,
@@ -22,6 +24,9 @@ import ProgressBar from '../components/ProgressBar';
 export default function CourseDetailsScreen({ route }) {
   const { id } = route.params;
 
+  const [lesson,setLesson]=useState(null);
+  const [opening,setOpening]=useState(false);
+  async function openLesson(id){if(opening)return;setOpening(true);try{const {data}=await api.get(`/aulas/${id}`);setLesson(data);}catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao abrir aula.');}finally{setOpening(false);}}
   const [data, setData] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -123,6 +128,7 @@ export default function CourseDetailsScreen({ route }) {
         />
       }
     >
+      <Modal visible={!!lesson} onRequestClose={()=>setLesson(null)} animationType="slide"><ScrollView contentContainerStyle={{padding:22,paddingTop:55}}><Text style={styles.title}>{lesson?.titulo}</Text><Text style={styles.description}>{lesson?.conteudo || "Nenhum conteúdo cadastrado."}</Text><Pressable onPress={()=>setLesson(null)} style={{padding:20}}><Text style={{color:"#2563eb"}}>Voltar ao curso</Text></Pressable></ScrollView></Modal>
       <Text style={styles.title}>
         {data.titulo}
       </Text>
@@ -158,7 +164,7 @@ export default function CourseDetailsScreen({ route }) {
           style={styles.lesson}
           key={aula.id}
         >
-          <View style={styles.lessonInfo}>
+          <Pressable style={styles.lessonInfo} disabled={!data.matriculado || opening} onPress={()=>openLesson(aula.id)}>
             <Text style={styles.lessonTitle}>
               {aula.ordem}. {aula.titulo}
             </Text>
@@ -166,7 +172,8 @@ export default function CourseDetailsScreen({ route }) {
             <Text style={styles.duration}>
               {aula.duracaoMin} min
             </Text>
-          </View>
+            {data.matriculado && <Text style={{color:"#2563eb",marginTop:6}}>Abrir conteúdo</Text>}
+          </Pressable>
 
           <Switch
             disabled={!data.matriculado}

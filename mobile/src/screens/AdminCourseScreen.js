@@ -26,6 +26,11 @@ export default function AdminCourseScreen({ route, navigation }) {
   const [aulas, setAulas] = useState([]);
   const [aulaTitulo, setAulaTitulo] = useState('');
   const [aulaDuracao, setAulaDuracao] = useState('45');
+  const [aulaConteudo,setAulaConteudo] = useState('');
+  const [editingLesson,setEditingLesson] = useState(null);
+  const [lessonBusy,setLessonBusy] = useState(false);
+  function resetLesson(){setEditingLesson(null);setAulaTitulo('');setAulaDuracao('45');setAulaConteudo('');}
+  async function editLesson(aula){if(lessonBusy)return;setLessonBusy(true);try{const {data}=await api.get(`/aulas/${aula.id}`);setEditingLesson(aula.id);setAulaTitulo(data.titulo);setAulaDuracao(String(data.duracaoMin));setAulaConteudo(data.conteudo || '');}catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao carregar aula.');}finally{setLessonBusy(false);}}
 
   useEffect(() => {
     if (edit) {
@@ -86,32 +91,15 @@ export default function AdminCourseScreen({ route, navigation }) {
   }
 
   async function addAula() {
-    if (!edit) {
-      Alert.alert(
-        'Atenção',
-        'Salve o curso antes de adicionar aulas.'
-      );
-      return;
-    }
-
-    try {
-      await api.post(
-        `/admin/cursos/${initial.id}/aulas`,
-        {
-          titulo: aulaTitulo,
-          duracaoMin: Number(aulaDuracao),
-        }
-      );
-
-      setAulaTitulo('');
-      await load();
-    } catch (error) {
-      Alert.alert(
-        'Erro',
-        error.response?.data?.message ||
-          'Falha ao criar aula.'
-      );
-    }
+    if(lessonBusy)return;
+    const titulo=aulaTitulo.trim(), duracaoMin=Number(aulaDuracao);
+    if(!titulo || titulo.length>300 || !aulaDuracao.trim() || !Number.isInteger(duracaoMin) || duracaoMin<0 || duracaoMin>2147483647) return Alert.alert('Atenção','Informe título e duração válidos.');
+    setLessonBusy(true);
+    try{const payload={titulo,duracaoMin,conteudo:aulaConteudo};
+      if(editingLesson) await api.put(`/admin/aulas/${editingLesson}`,payload);
+      else await api.post(`/admin/cursos/${initial.id}/aulas`,payload);
+      resetLesson();await load();
+    }catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao salvar aula.');}finally{setLessonBusy(false);}
   }
 
   async function delAula(id) {
@@ -226,6 +214,7 @@ export default function AdminCourseScreen({ route, navigation }) {
                 </Text>
               </View>
 
+              <Pressable disabled={lessonBusy} onPress={() => editLesson(aula)}><Text style={{color:"#2563eb",padding:5,fontWeight:"700"}}>Editar</Text></Pressable>
               <Pressable
                 onPress={() => delAula(aula.id)}
               >
@@ -251,12 +240,14 @@ export default function AdminCourseScreen({ route, navigation }) {
             onChangeText={setAulaDuracao}
           />
 
+          <TextInput style={[styles.input,styles.textArea]} placeholder="Conteúdo da aula" multiline value={aulaConteudo} onChangeText={setAulaConteudo} editable={!lessonBusy}/>
+          {editingLesson && <Pressable onPress={resetLesson} disabled={lessonBusy}><Text style={{color:"#2563eb",padding:10}}>Cancelar edição</Text></Pressable>}
           <Pressable
             style={styles.secondaryButton}
-            onPress={addAula}
+            disabled={lessonBusy} onPress={addAula}
           >
             <Text style={styles.secondaryButtonText}>
-              Adicionar aula
+              {editingLesson ? 'Salvar aula' : 'Adicionar aula'}
             </Text>
           </Pressable>
 
