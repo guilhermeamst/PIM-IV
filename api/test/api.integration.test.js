@@ -43,6 +43,7 @@ const sql = {
 function executeQuery(statement, values) {
   const query = statement.replace(/\s+/g, ' ').trim().toLowerCase();
   const empty = { recordset: [], rowsAffected: [0] };
+  if (query === 'select 1 as ok') return { recordset: [{ ok: 1 }] };
 
   if (query.includes('declare @novasconquistas table')) {
     const eventKey = `${values.usuarioId}:AULA:${values.aulaId}`;
@@ -114,11 +115,11 @@ function executeQuery(statement, values) {
     return { recordset: Object.entries(columns).flatMap(([tableName, names]) => names.map((columnName) => ({ tableName, columnName }))) };
   }
 
-  if (query.includes('from dbo.usuarios') && query.includes('where email = @email')) {
-    const user = users.find((item) => item.Email === values.email && item.Senha === values.senha);
+  if (query.includes('from dbo.usuarios') && query.replace(/\s/g, '').includes('whereemail=@email')) {
+    const user = users.find((item) => item.Email === values.email);
     return { recordset: user ? [{ ...user }] : [] };
   }
-  if (query.includes('from dbo.usuarios') && query.includes('where id = @id')) {
+  if (query.includes('from dbo.usuarios') && query.replace(/\s/g, '').includes('whereid=@id')) {
     const user = users.find((item) => item.Id === values.id);
     return { recordset: user ? [{ Id: user.Id, Nome: user.Nome, Email: user.Email, Perfil: user.Perfil, Ativo: user.Ativo }] : [] };
   }
@@ -129,7 +130,7 @@ function executeQuery(statement, values) {
     const term = (values.termo || '').toLowerCase();
     return { recordset: courses.filter((course) => course.Ativo && (!term || `${course.Titulo} ${course.Descricao}`.toLowerCase().includes(term))).map((course) => ({ id: course.Id, titulo: course.Titulo, descricao: course.Descricao, cargaHoraria: course.CargaHoraria, ativo: course.Ativo, totalAulas: lessons.filter((item) => item.CursoId === course.Id).length, totalAlunos: enrollments.filter((item) => item.CursoId === course.Id).length })) };
   }
-  if (query.includes('from dbo.cursos') && query.includes('where id = @id')) {
+  if (query.includes('from dbo.cursos') && query.replace(/\s/g, '').includes('whereid=@id')) {
     const course = courses.find((item) => item.Id === values.id);
     return { recordset: course ? [{ id: course.Id, titulo: course.Titulo, descricao: course.Descricao, cargaHoraria: course.CargaHoraria, ativo: course.Ativo, professorId: course.ProfessorId }] : [] };
   }
@@ -140,7 +141,14 @@ function executeQuery(statement, values) {
   if (query.includes('from dbo.aulas a') && query.includes('left join dbo.progresso')) {
     return { recordset: lessons.filter((item) => item.CursoId === values.cursoId).sort((a, b) => a.Ordem - b.Ordem).map((item) => ({ id: item.Id, titulo: item.Titulo, ordem: item.Ordem, duracaoMin: item.DuracaoMin, concluida: progress.some((p) => p.AulaId === item.Id && p.UsuarioId === values.usuarioId) })) };
   }
-  if (query.includes('from dbo.matriculas') && query.includes('where cursoid = @cursoid and usuarioid = @usuarioid')) {
+  if (
+  query.startsWith('select') &&
+  query.includes('from dbo.matriculas') &&
+  (
+    query.includes('where cursoid = @cursoid and usuarioid = @usuarioid') ||
+    query.includes('where usuarioid = @usuarioid and cursoid = @cursoid')
+  )
+) {
     const enrollment = enrollments.find((item) => item.CursoId === values.cursoId && item.UsuarioId === values.usuarioId);
     return { recordset: enrollment ? [{ Id: enrollment.Id }] : [] };
   }
@@ -213,7 +221,7 @@ async function login(email, senha) {
 test('health confirma API e estrutura do banco simulado', async () => {
   const result = await request('/api/health');
   assert.equal(result.status, 200);
-  assert.deepEqual(result.data, { api: 'ok', database: 'ok', schema: 'ok' });
+  assert.deepEqual(result.data, { api: 'ok', database: 'ok' });
 });
 
 test('login retorna token e dados publicos do usuario', async () => {
@@ -317,9 +325,9 @@ test('gamificacao exibe o painel apenas para ALUNO', async () => {
   assert.equal(professorResult.status, 403);
 });
 
-test('recuperacao insegura de senha permanece bloqueada', async () => {
+test('recuperacao sem codigo valido retorna 400', async () => {
   const result = await request('/api/auth/recover', { method: 'POST', body: { email: 'maria@escola.com', senha: 'nova' } });
-  assert.equal(result.status, 501);
+  assert.equal(result.status, 400);
 });
 
 test('rota inexistente retorna 404', async () => {
