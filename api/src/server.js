@@ -55,8 +55,9 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const SECRET = require('./jwtSecret');
 
+const passwordStamp = require('./passwordStamp');
 function tokenFor(user) {
-  return jwt.sign({ id: user.Id, nome: user.Nome, email: user.Email, perfil: user.Perfil }, SECRET, { expiresIn: '8h' });
+  return jwt.sign({ id: user.Id, nome: user.Nome, email: user.Email, perfil: user.Perfil, pwd: passwordStamp(user.Senha) }, SECRET, { expiresIn: '8h' });
 }
 
 app.get('/api/health', async (req, res) => {
@@ -90,9 +91,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: 'Email ou senha incorretos.' });
     if (!user.Ativo) return res.status(403).json({ message: 'Usuario inativo.' });
     if (!user.Senha.startsWith('scrypt:')) {
-      await pool.request().input('id',sql.Int,user.Id).input('old',sql.NVarChar(200),user.Senha).input('senha',sql.NVarChar(200),await hashPassword(senha)).query('UPDATE dbo.Usuarios SET Senha=@senha WHERE Id=@id AND Senha=@old');
+      const upgraded = await hashPassword(senha);
+      const changed = await pool.request().input('id',sql.Int,user.Id).input('old',sql.NVarChar(200),user.Senha).input('senha',sql.NVarChar(200),upgraded).query('UPDATE dbo.Usuarios SET Senha=@senha WHERE Id=@id AND Senha=@old');
+      if (!changed.rowsAffected[0]) return res.status(401).json({message:'Tente entrar novamente.'});
+      user.Senha = upgraded;
     }
-    if (user.PrimeiroAcesso) return res.json({ primeiroAcesso: true, tokenPrimeiroAcesso: jwt.sign({id:user.Id, finalidade:'primeiro-acesso'}, SECRET, {expiresIn:'10m', algorithm:'HS256'}) });
+    if (user.PrimeiroAcesso) return res.json({ primeiroAcesso: true, tokenPrimeiroAcesso: jwt.sign({id:user.Id, finalidade:'primeiro-acesso',pwd:passwordStamp(user.Senha)}, SECRET, {expiresIn:'10m', algorithm:'HS256'}) });
     return res.json({ token: tokenFor(user), user: { id: user.Id, nome: user.Nome, email: user.Email, perfil: user.Perfil } });
   } catch (e) { return res.status(500).json({ message: 'Erro ao autenticar.' }); }
 });
@@ -109,9 +113,10 @@ app.post('/api/auth/primeiro-acesso', async (req,res) => {
     tx = new sql.Transaction(await getPool()); await tx.begin();
     const r = await new sql.Request(tx).input('id',sql.Int,claims.id).query('SELECT Id,Nome,Email,Perfil,Senha,Ativo,PrimeiroAcesso FROM dbo.Usuarios WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id');
     const u = r.recordset[0];
-    if (!u || !u.Ativo || !u.PrimeiroAcesso || !(await verifyPassword(senhaTemporaria,u.Senha))) { await tx.rollback(); return res.status(403).json({message:'Primeiro acesso indisponivel ou senha incorreta.'}); }
+    if (!u || !u.Ativo || !u.PrimeiroAcesso || claims.pwd !== passwordStamp(u.Senha) || !(await verifyPassword(senhaTemporaria,u.Senha))) { await tx.rollback(); return res.status(403).json({message:'Primeiro acesso indisponivel ou senha incorreta.'}); }
     const codigo = newRecoveryCode();
-    await new sql.Request(tx).input('id',sql.Int,u.Id).input('senha',sql.NVarChar(200),await hashPassword(novaSenha)).query('UPDATE dbo.Usuarios SET Senha=@senha, PrimeiroAcesso=0 WHERE Id=@id');
+    u.Senha = await hashPassword(novaSenha);
+    await new sql.Request(tx).input('id',sql.Int,u.Id).input('senha',sql.NVarChar(200),u.Senha).query('UPDATE dbo.Usuarios SET Senha=@senha, PrimeiroAcesso=0 WHERE Id=@id');
     await new sql.Request(tx).input('id',sql.Int,u.Id).input('digest',sql.Char(64),codeDigest(codigo)).query('DELETE FROM dbo.CodigosRecuperacao WHERE UsuarioId=@id; INSERT INTO dbo.CodigosRecuperacao (UsuarioId,CodigoHash) VALUES (@id,@digest);');
     await tx.commit();
     return res.json({token:tokenFor(u),user:{id:u.Id,nome:u.Nome,email:u.Email,perfil:u.Perfil},codigoRecuperacao:codigo});
@@ -226,8 +231,9 @@ app.put('/api/admin/usuarios/:id/status', auth, adminOnly, async (req,res)=>{
   const id=Number(req.params.id), ativo=req.body?.ativo;
   if(!Number.isSafeInteger(id)||id<=0||typeof ativo!=='boolean')return res.status(400).json({message:'Dados invalidos.'});
   if(id===req.user.id&&!ativo)return res.status(400).json({message:'Nao pode desativar a propria conta.'});
-  try {const pool=await getPool();const r=await pool.request().input('id',sql.Int,id).input('ativo',sql.Bit,ativo).query('UPDATE dbo.Usuarios SET Ativo=@ativo WHERE Id=@id');
-  return r.rowsAffected[0]?res.json({message:'Status atualizado.'}):res.status(404).json({message:'Usuario nao encontrado.'});}catch(e){return res.status(500).json({message:'Erro ao atualizar usuario.'});}
+  let tx; try {tx=new sql.Transaction(await getPool());await tx.begin();const admins=await new sql.Request(tx).query("SELECT Id FROM dbo.Usuarios WITH (UPDLOCK,HOLDLOCK) WHERE Perfil='ADMIN' AND Ativo=1");
+  if(!ativo && admins.recordset.length<=1 && admins.recordset.some(a=>a.Id===id)){await tx.rollback();return res.status(400).json({message:'Nao e permitido desativar o ultimo administrador ativo.'});}
+  const r=await new sql.Request(tx).input('id',sql.Int,id).input('ativo',sql.Bit,ativo).query('UPDATE dbo.Usuarios SET Ativo=@ativo WHERE Id=@id');await tx.commit();return r.rowsAffected[0]?res.json({message:'Status atualizado.'}):res.status(404).json({message:'Usuario nao encontrado.'});}catch(e){if(tx){try{await tx.rollback();}catch{}}return res.status(500).json({message:'Erro ao atualizar usuario.'});}
 });
 
 
@@ -246,18 +252,21 @@ app.put('/api/admin/usuarios/:id', auth, adminOnly, async (req,res) => {
   const {nome,email,ativo=true,senha=''}=req.body||{};
   const perfil=String(req.body?.perfil||'').toUpperCase();
   if(typeof ativo!=='boolean'||(id===req.user.id&&(perfil!=='ADMIN'||!ativo)))return res.status(400).json({message:'Nao pode remover o proprio acesso administrativo.'});
-  if(typeof nome!=='string'||nome.trim().length<3||typeof email!=='string'||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!['ALUNO','PROFESSOR','ADMIN'].includes(String(perfil).toUpperCase())|| (senha && (typeof senha!=='string'||senha.length<8)))return res.status(400).json({message:'Dados de usuario invalidos.'});
-  try { const pool=await getPool(); const old=await pool.request().input('id',sql.Int,id).query('SELECT Perfil, Ativo FROM dbo.Usuarios WHERE Id=@id');
-    if(!old.recordset.length)return res.status(404).json({message:'Usuario nao encontrado.'});
-    if(old.recordset[0].Perfil==='ADMIN' && old.recordset[0].Ativo && (perfil!=='ADMIN'||!ativo)) {
-      const admins=await pool.request().query("SELECT COUNT(*) AS total FROM dbo.Usuarios WHERE Perfil='ADMIN' AND Ativo=1");
-      if(admins.recordset[0].total<=1)return res.status(400).json({message:'Nao e permitido remover o ultimo administrador ativo.'});
-    }
-    const q=pool.request().input('id',sql.Int,id).input('nome',sql.NVarChar(200),nome.trim()).input('email',sql.NVarChar(200),email.trim().toLowerCase()).input('perfil',sql.NVarChar(20),perfil).input('ativo',sql.Bit,Boolean(ativo));
+  if(typeof nome!=='string'||nome.trim().length<3||typeof email!=='string'||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!['ALUNO','PROFESSOR','ADMIN'].includes(String(perfil).toUpperCase())|| (senha && (typeof senha!=='string'||(senha.length<8||senha.length>128))))return res.status(400).json({message:'Dados de usuario invalidos.'});
+  let tx;
+  try {
+    tx=new sql.Transaction(await getPool()); await tx.begin();
+    const admins=await new sql.Request(tx).query("SELECT Id FROM dbo.Usuarios WITH (UPDLOCK,HOLDLOCK) WHERE Perfil='ADMIN' AND Ativo=1");
+    const old=await new sql.Request(tx).input('id',sql.Int,id).query('SELECT Perfil,Ativo FROM dbo.Usuarios WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id');
+    if(!old.recordset.length){await tx.rollback();return res.status(404).json({message:'Usuario nao encontrado.'});}
+    if(old.recordset[0].Perfil==='ADMIN' && old.recordset[0].Ativo && (perfil!=='ADMIN'||!ativo) && admins.recordset.length<=1){await tx.rollback();return res.status(400).json({message:'Nao e permitido remover o ultimo administrador ativo.'});}
+    const q=new sql.Request(tx).input('id',sql.Int,id).input('nome',sql.NVarChar(200),nome.trim()).input('email',sql.NVarChar(200),email.trim().toLowerCase()).input('perfil',sql.NVarChar(20),perfil).input('ativo',sql.Bit,ativo);
     let query='UPDATE dbo.Usuarios SET Nome=@nome,Email=@email,Perfil=@perfil,Ativo=@ativo';
-    if(senha){q.input('senha',sql.NVarChar(200),await hashPassword(senha));query+=',Senha=@senha';}
-    await q.query(query+' WHERE Id=@id');return res.json({message:'Usuario atualizado.'});
-  }catch(e){return res.status(e.number===2627||e.number===2601?409:500).json({message:'Erro ao atualizar usuario.'});}
+    if(senha){q.input('senha',sql.NVarChar(200),await hashPassword(senha));query+=',Senha=@senha,PrimeiroAcesso=1';}
+    await q.query(query+' WHERE Id=@id');
+    if(senha)await new sql.Request(tx).input('id',sql.Int,id).query('DELETE FROM dbo.CodigosRecuperacao WHERE UsuarioId=@id');
+    await tx.commit();return res.json({message:'Usuario atualizado.'});
+  }catch(e){if(tx){try{await tx.rollback();}catch{}}return res.status(e.number===2627||e.number===2601?409:500).json({message:'Erro ao atualizar usuario.'});}
 });
 app.put('/api/admin/aulas/:id',auth,adminOnly,async(req,res)=>{
  const id=validId(req.params.id), lesson=validateLesson(req.body);
