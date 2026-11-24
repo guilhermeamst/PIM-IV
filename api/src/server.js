@@ -50,7 +50,10 @@ function normalizeCode(code) {
 }
 async function createAccount(body, publicSignup, res) {
   const data = validateAccount(body, publicSignup);
-  if (data.error) return res.status(400).json({ message: data.error });
+  if (data.error) {
+    console.warn('[VALIDACAO CADASTRO]', data.error);
+    return res.status(400).json({ message: data.error });
+  }
   try {
     const pool = await getPool();
     const senhaHash = await hashPassword(data.senha);
@@ -75,6 +78,7 @@ async function createAccount(body, publicSignup, res) {
     } catch (e) { await tx.rollback(); throw e; }
     return res.status(201).json({ id, message: 'Usuario criado com sucesso.', codigoRecuperacao: recoveryCode });
   } catch (error) {
+    console.error('[ERRO CADASTRO]', error.message);
     if (error.number === 2627 || error.number === 2601 || /duplicate|unique|duplicad/i.test(error.message))
       return res.status(409).json({ message: 'Este email ja esta cadastrado.' });
     return res.status(500).json({ message: 'Erro ao criar usuario.' });
@@ -95,7 +99,16 @@ function tokenFor(user) {
 app.get('/api/health', async (req, res) => {
   try {
     const pool = await getPool();
-    await pool.request().query('SELECT 1 AS ok');
+    const result = await pool.request().query(`
+      SELECT
+        @@SERVERNAME AS Servidor,
+        DB_NAME() AS Banco,
+        USER_NAME() AS Usuario,
+        OBJECT_ID('dbo.Usuarios', 'U') AS TabelaUsuarios,
+        OBJECT_ID('dbo.CodigosRecuperacao', 'U') AS TabelaRecuperacao
+    `);
+
+    console.log('[DIAGNOSTICO BANCO]', result.recordset[0]);
     res.json({ api: 'ok', database: 'ok' });
   } catch (e) {
     res.status(500).json({ api: 'ok', database: 'error', message: e.message });
