@@ -237,6 +237,11 @@ namespace PlataformaCursosWeb.Services
         // administrador. Esta aqui para o programa dar a mensagem certa
         // em vez de parecer quebrado.
         // -------------------------------------------------------------
+        public RespostaApi Registrar(string nome, string email, string senha, string confirmarSenha)
+            => Chamar(HttpMethod.Post, "/api/auth/register", new { nome, email, senha, confirmarSenha });
+        public RespostaApi PrimeiroAcesso(string tokenPrimeiroAcesso, string senhaTemporaria, string novaSenha)
+            => Chamar(HttpMethod.Post, "/api/auth/primeiro-acesso", new { tokenPrimeiroAcesso, senhaTemporaria, novaSenha });
+
         public RespostaApi RecuperarSenha(string afr_email, string codigo = "", string novaSenha = "")
         {
             Dictionary<string, string> afr_corpo = new Dictionary<string, string>();
@@ -410,12 +415,13 @@ namespace PlataformaCursosWeb.Services
             return Chamar(HttpMethod.Delete, "/api/admin/cursos/" + afr_cursoId, null);
         }
 
-        public RespostaApi CriarAula(int afr_cursoId, string afr_titulo, int afr_duracaoMin)
+        public RespostaApi CriarAula(int afr_cursoId, string afr_titulo, int afr_duracaoMin, string conteudo = null)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
             afr_corpo["titulo"] = afr_titulo ?? "";
             afr_corpo["duracaoMin"] = afr_duracaoMin;
+            if (conteudo != null) afr_corpo["conteudo"] = conteudo;
 
             // A ordem da aula NAO vai no corpo: a API calcula sozinha
             // (MAX(Ordem)+1 dentro do curso).
@@ -469,12 +475,13 @@ namespace PlataformaCursosWeb.Services
             return Chamar(HttpMethod.Put, "/api/professor/cursos/" + afr_cursoId, afr_corpo);
         }
 
-        public RespostaApi CriarAulaProfessor(int afr_cursoId, string afr_titulo, int afr_duracaoMin)
+        public RespostaApi CriarAulaProfessor(int afr_cursoId, string afr_titulo, int afr_duracaoMin, string conteudo = null)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
             afr_corpo["titulo"] = afr_titulo ?? "";
             afr_corpo["duracaoMin"] = afr_duracaoMin;
+            if (conteudo != null) afr_corpo["conteudo"] = conteudo;
 
             return Chamar(HttpMethod.Post,
                           "/api/professor/cursos/" + afr_cursoId + "/aulas",
@@ -524,24 +531,25 @@ namespace PlataformaCursosWeb.Services
             return Chamar(HttpMethod.Get, "/api/aulas/" + afr_aulaId, null);
         }
 
-        public RespostaApi AlterarAula(int afr_aulaId, string afr_titulo, int afr_duracaoMin)
+        public RespostaApi AlterarAula(int afr_aulaId, string afr_titulo, int afr_duracaoMin, string conteudo = null)
         {
             return Chamar(HttpMethod.Put, "/api/admin/aulas/" + afr_aulaId,
-                          CorpoAula(afr_titulo, afr_duracaoMin));
+                          CorpoAula(afr_titulo, afr_duracaoMin, conteudo));
         }
 
-        public RespostaApi AlterarAulaProfessor(int afr_aulaId, string afr_titulo, int afr_duracaoMin)
+        public RespostaApi AlterarAulaProfessor(int afr_aulaId, string afr_titulo, int afr_duracaoMin, string conteudo = null)
         {
             return Chamar(HttpMethod.Put, "/api/professor/aulas/" + afr_aulaId,
-                          CorpoAula(afr_titulo, afr_duracaoMin));
+                          CorpoAula(afr_titulo, afr_duracaoMin, conteudo));
         }
 
-        private static Dictionary<string, object> CorpoAula(string afr_titulo, int afr_duracaoMin)
+        private static Dictionary<string, object> CorpoAula(string afr_titulo, int afr_duracaoMin, string conteudo = null)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
             afr_corpo["titulo"] = afr_titulo ?? "";
             afr_corpo["duracaoMin"] = afr_duracaoMin;
+            if (conteudo != null) afr_corpo["conteudo"] = conteudo;
 
             return afr_corpo;
         }
@@ -694,6 +702,8 @@ namespace PlataformaCursosWeb.Services
 
     public class LoginApi
     {
+        [JsonPropertyName("primeiroAcesso")] public bool PrimeiroAcesso { get; set; }
+        [JsonPropertyName("tokenPrimeiroAcesso")] public string TokenPrimeiroAcesso { get; set; }
         [JsonPropertyName("token")]
         public string afr_Token { get; set; } = "";
 
@@ -849,6 +859,7 @@ namespace PlataformaCursosWeb.Services
 
     public class AulaApi
     {
+        [JsonPropertyName("conteudo")] public string Conteudo { get; set; }
         [JsonPropertyName("id")]
         public int afr_Id { get; set; }
 
@@ -878,6 +889,7 @@ namespace PlataformaCursosWeb.Services
             afr_aula.afr_Ordem = afr_Ordem;
             afr_aula.afr_DuracaoMin = afr_DuracaoMin;
             afr_aula.afr_Concluida = afr_Concluida;
+            afr_aula.afr_Conteudo = Conteudo ?? "";
 
             return afr_aula;
         }

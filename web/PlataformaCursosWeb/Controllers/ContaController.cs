@@ -87,20 +87,21 @@ namespace PlataformaCursosWeb.Controllers
                 return View(afr_dados);
             }
 
-            // DS01 - validarLogin(email, senha)
-            string afr_mensagem;
-
-            Usuario afr_usuario = afr_autenticacaoService.ValidarLogin(
-                                      afr_dados.afr_Email,
-                                      afr_dados.afr_Senha,
-                                      out afr_mensagem);
-
-            if (afr_usuario == null)
+            var resposta = afr_ponte.LoginPublico(afr_dados.afr_Email, afr_dados.afr_Senha);
+            var login = resposta.Converter<LoginApi>();
+            if (resposta.afr_Ok && login != null && login.PrimeiroAcesso)
             {
-                ViewBag.Erro = afr_mensagem;
+                Response.Headers["Cache-Control"] = "no-store";
+                ViewBag.Token = login.TokenPrimeiroAcesso;
+                return View("PrimeiroAcesso");
+            }
+            if (!resposta.afr_Ok || login?.afr_Usuario == null || string.IsNullOrEmpty(login.afr_Token))
+            {
+                ViewBag.Erro = resposta.afr_CodigoHttp == 401 ? "Email ou senha incorretos." : resposta.afr_Mensagem;
                 return View(afr_dados);
             }
-
+            Usuario afr_usuario = login.afr_Usuario.ParaUsuario();
+            string afr_mensagem = "Bem-vindo!";
             // -------------------------------------------------------------
             // DS01 - acessoPermitido(): ABERTURA DA SESSAO
             // No desktop era Sessao.Abrir(usuario), uma variavel estatica.
@@ -121,7 +122,7 @@ namespace PlataformaCursosWeb.Controllers
             // VERSAO 4 - no modo API o token do login vai junto no cookie.
             // O cookie e cifrado e HttpOnly: o navegador guarda, mas nem a
             // pessoa nem um script da pagina conseguem ler o token.
-            string afr_tokenApi = afr_autenticacaoService.ObterUltimoTokenApi();
+            string afr_tokenApi = login.afr_Token;
 
             if (afr_tokenApi != "")
             {
@@ -207,6 +208,35 @@ namespace PlataformaCursosWeb.Controllers
         // Pagina mostrada quando alguem tenta abrir uma tela que o
         // perfil dele nao alcanca
         // =============================================================
+        [HttpGet]
+        public IActionResult Cadastro() => View();
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult Cadastro(string nome, string email, string senha, string confirmarSenha)
+        {
+            Response.Headers["Cache-Control"] = "no-store";
+            var r = afr_ponte.Registrar(nome, email, senha, confirmarSenha);
+            if (r.afr_Ok) ViewBag.Codigo = r.CodigoRecuperacao;
+            else ViewBag.Erro = r.afr_Mensagem;
+            return View();
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        public IActionResult PrimeiroAcesso(string token, string senhaTemporaria, string novaSenha, string confirmarSenha)
+        {
+            Response.Headers["Cache-Control"] = "no-store";
+            ViewBag.Token = token;
+            if (string.IsNullOrEmpty(novaSenha) || novaSenha != confirmarSenha)
+                ViewBag.Erro = "Confirme a nova senha.";
+            else
+            {
+                var r = afr_ponte.PrimeiroAcesso(token, senhaTemporaria, novaSenha);
+                if (r.afr_Ok) ViewBag.Codigo = r.CodigoRecuperacao;
+                else ViewBag.Erro = r.afr_Mensagem;
+            }
+            return View();
+        }
+
         [HttpGet]
         public IActionResult AcessoNegado()
         {
