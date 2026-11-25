@@ -1,26 +1,28 @@
 const express = require('express');
-const { sql, getPool } = require('../db');
-const { auth, studentOnly } = require('../middleware');
-const { canAccessCourse } = require('../permissions');
-const { awardLessonCompletion } = require('../gamificationService');
-
+const {
+  sql,
+  getPool
+} = require('../db');
+const {
+  auth,
+  studentOnly
+} = require('../middleware');
+const {
+  canAccessCourse
+} = require('../permissions');
+const {
+  awardLessonCompletion
+} = require('../gamificationService');
 const router = express.Router();
-
 function validId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
-
 router.get('/', auth, async (req, res) => {
-  const termo = typeof req.query.busca === 'string'
-    ? req.query.busca.trim()
-    : '';
-
+  const termo = typeof req.query.busca === 'string' ? req.query.busca.trim() : '';
   try {
     const pool = await getPool();
-    const result = await pool.request()
-      .input('termo', sql.NVarChar(200), termo)
-      .query(`
+    const result = await pool.request().input('termo', sql.NVarChar(200), termo).query(`
         SELECT
           c.Id AS id,
           c.Titulo AS titulo,
@@ -38,7 +40,6 @@ router.get('/', auth, async (req, res) => {
           )
         ORDER BY c.Titulo
       `);
-
     res.json(result.recordset);
   } catch (error) {
     res.status(500).json({
@@ -46,19 +47,16 @@ router.get('/', auth, async (req, res) => {
     });
   }
 });
-
 router.get('/:id', auth, async (req, res) => {
   const id = validId(req.params.id);
-
   if (!id) {
-    return res.status(400).json({ message: 'Identificador de curso invalido.' });
+    return res.status(400).json({
+      message: 'Identificador de curso invalido.'
+    });
   }
-
   try {
     const pool = await getPool();
-    const course = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
+    const course = await pool.request().input('id', sql.Int, id).query(`
         SELECT
           Id AS id,
           Titulo AS titulo,
@@ -69,25 +67,23 @@ router.get('/:id', auth, async (req, res) => {
         FROM dbo.Cursos
         WHERE Id = @id
       `);
-
     if (!course.recordset[0]) {
-      return res.status(404).json({ message: 'Curso nao encontrado.' });
+      return res.status(404).json({
+        message: 'Curso nao encontrado.'
+      });
     }
-
     const courseData = course.recordset[0];
-
     if (!canAccessCourse(req.user, courseData)) {
       if (req.user.perfil === 'PROFESSOR') {
-        return res.status(403).json({ message: 'Voce nao e o responsavel por este curso.' });
+        return res.status(403).json({
+          message: 'Voce nao e o responsavel por este curso.'
+        });
       }
-
-      return res.status(404).json({ message: 'Curso nao encontrado ou indisponivel.' });
+      return res.status(404).json({
+        message: 'Curso nao encontrado ou indisponivel.'
+      });
     }
-
-    const lessons = await pool.request()
-      .input('cursoId', sql.Int, id)
-      .input('usuarioId', sql.Int, req.user.id)
-      .query(`
+    const lessons = await pool.request().input('cursoId', sql.Int, id).input('usuarioId', sql.Int, req.user.id).query(`
         SELECT
           a.Id AS id,
           a.Titulo AS titulo,
@@ -103,22 +99,16 @@ router.get('/:id', auth, async (req, res) => {
         WHERE a.CursoId = @cursoId
         ORDER BY a.Ordem
       `);
-
-    const enrollment = await pool.request()
-      .input('cursoId', sql.Int, id)
-      .input('usuarioId', sql.Int, req.user.id)
-      .query(`SELECT Id FROM dbo.Matriculas WHERE CursoId = @cursoId AND UsuarioId = @usuarioId`);
-
+    const enrollment = await pool.request().input('cursoId', sql.Int, id).input('usuarioId', sql.Int, req.user.id).query(`SELECT Id FROM dbo.Matriculas WHERE CursoId = @cursoId AND UsuarioId = @usuarioId`);
     const total = lessons.recordset.length;
-    const done = lessons.recordset.filter((lesson) => lesson.concluida).length;
-
+    const done = lessons.recordset.filter(lesson => lesson.concluida).length;
     res.json({
       ...courseData,
       matriculado: enrollment.recordset.length > 0,
       aulas: lessons.recordset,
-      progresso: total ? Math.round((done * 100) / total) : 0,
+      progresso: total ? Math.round(done * 100 / total) : 0,
       concluidas: done,
-      totalAulas: total,
+      totalAulas: total
     });
   } catch (error) {
     res.status(500).json({
@@ -126,28 +116,22 @@ router.get('/:id', auth, async (req, res) => {
     });
   }
 });
-
 router.post('/:id/matricula', auth, studentOnly, async (req, res) => {
   const cursoId = validId(req.params.id);
-
   if (!cursoId) {
-    return res.status(400).json({ message: 'Identificador de curso invalido.' });
+    return res.status(400).json({
+      message: 'Identificador de curso invalido.'
+    });
   }
-
   try {
     const pool = await getPool();
-    const course = await pool.request()
-      .input('cursoId', sql.Int, cursoId)
-      .query('SELECT Id FROM dbo.Cursos WHERE Id = @cursoId AND Ativo = 1');
-
+    const course = await pool.request().input('cursoId', sql.Int, cursoId).query('SELECT Id FROM dbo.Cursos WHERE Id = @cursoId AND Ativo = 1');
     if (!course.recordset[0]) {
-      return res.status(404).json({ message: 'Curso nao encontrado ou inativo.' });
+      return res.status(404).json({
+        message: 'Curso nao encontrado ou inativo.'
+      });
     }
-
-    await pool.request()
-      .input('cursoId', sql.Int, cursoId)
-      .input('usuarioId', sql.Int, req.user.id)
-      .query(`
+    await pool.request().input('cursoId', sql.Int, cursoId).input('usuarioId', sql.Int, req.user.id).query(`
         IF NOT EXISTS (
           SELECT 1 FROM dbo.Matriculas
           WHERE CursoId = @cursoId AND UsuarioId = @usuarioId
@@ -155,53 +139,48 @@ router.post('/:id/matricula', auth, studentOnly, async (req, res) => {
         INSERT INTO dbo.Matriculas (CursoId, UsuarioId, DataMatricula)
         VALUES (@cursoId, @usuarioId, GETDATE())
       `);
-
-    res.status(201).json({ message: 'Matricula realizada com sucesso.' });
+    res.status(201).json({
+      message: 'Matricula realizada com sucesso.'
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao realizar matricula.' });
+    res.status(500).json({
+      message: 'Erro ao realizar matricula.'
+    });
   }
 });
-
 router.put('/:cursoId/aulas/:aulaId/progresso', auth, studentOnly, async (req, res) => {
   const cursoId = validId(req.params.cursoId);
   const aulaId = validId(req.params.aulaId);
-  const { concluida } = req.body;
-
+  const {
+    concluida
+  } = req.body;
   if (!cursoId || !aulaId) {
-    return res.status(400).json({ message: 'Identificador de curso ou aula invalido.' });
+    return res.status(400).json({
+      message: 'Identificador de curso ou aula invalido.'
+    });
   }
-
   if (typeof concluida !== 'boolean') {
-    return res.status(400).json({ message: 'Informe se a aula foi concluida.' });
+    return res.status(400).json({
+      message: 'Informe se a aula foi concluida.'
+    });
   }
-
   try {
     const pool = await getPool();
-    const check = await pool.request()
-      .input('aulaId', sql.Int, aulaId)
-      .input('cursoId', sql.Int, cursoId)
-      .query('SELECT a.Id FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId WHERE a.Id = @aulaId AND a.CursoId = @cursoId AND c.Ativo=1');
-
+    const check = await pool.request().input('aulaId', sql.Int, aulaId).input('cursoId', sql.Int, cursoId).query('SELECT a.Id FROM dbo.Aulas a JOIN dbo.Cursos c ON c.Id=a.CursoId WHERE a.Id = @aulaId AND a.CursoId = @cursoId AND c.Ativo=1');
     if (!check.recordset[0]) {
-      return res.status(404).json({ message: 'Aula nao encontrada.' });
+      return res.status(404).json({
+        message: 'Aula nao encontrada.'
+      });
     }
-
-    const enrollment = await pool.request()
-      .input('usuarioId', sql.Int, req.user.id)
-      .input('cursoId', sql.Int, cursoId)
-      .query('SELECT Id FROM dbo.Matriculas WHERE UsuarioId = @usuarioId AND CursoId = @cursoId');
-
+    const enrollment = await pool.request().input('usuarioId', sql.Int, req.user.id).input('cursoId', sql.Int, cursoId).query('SELECT Id FROM dbo.Matriculas WHERE UsuarioId = @usuarioId AND CursoId = @cursoId');
     if (!enrollment.recordset[0]) {
-      return res.status(403).json({ message: 'Matricule-se no curso antes de registrar o progresso.' });
+      return res.status(403).json({
+        message: 'Matricule-se no curso antes de registrar o progresso.'
+      });
     }
-
     let gamificacao = null;
-
     if (concluida) {
-      await pool.request()
-        .input('usuarioId', sql.Int, req.user.id)
-        .input('aulaId', sql.Int, aulaId)
-        .query(`
+      await pool.request().input('usuarioId', sql.Int, req.user.id).input('aulaId', sql.Int, aulaId).query(`
           IF NOT EXISTS (
             SELECT 1
             FROM dbo.Progresso
@@ -210,18 +189,13 @@ router.put('/:cursoId/aulas/:aulaId/progresso', auth, studentOnly, async (req, r
           INSERT INTO dbo.Progresso (UsuarioId, AulaId, DataConclusao)
           VALUES (@usuarioId, @aulaId, GETDATE())
         `);
-
       gamificacao = await awardLessonCompletion(req.user.id, aulaId);
     } else {
-      await pool.request()
-        .input('usuarioId', sql.Int, req.user.id)
-        .input('aulaId', sql.Int, aulaId)
-        .query('DELETE FROM dbo.Progresso WHERE UsuarioId = @usuarioId AND AulaId = @aulaId');
+      await pool.request().input('usuarioId', sql.Int, req.user.id).input('aulaId', sql.Int, aulaId).query('DELETE FROM dbo.Progresso WHERE UsuarioId = @usuarioId AND AulaId = @aulaId');
     }
-
     res.json({
       message: concluida ? 'Aula concluida.' : 'Conclusao removida.',
-      gamificacao,
+      gamificacao
     });
   } catch (error) {
     res.status(500).json({
@@ -229,5 +203,4 @@ router.put('/:cursoId/aulas/:aulaId/progresso', auth, studentOnly, async (req, r
     });
   }
 });
-
 module.exports = router;

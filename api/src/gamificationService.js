@@ -1,4 +1,7 @@
-const { sql, getPool } = require('./db');
+const {
+  sql,
+  getPool
+} = require('./db');
 
 /**
  * Registra XP uma unica vez por aula. Desmarcar e concluir novamente a mesma
@@ -6,10 +9,7 @@ const { sql, getPool } = require('./db');
  */
 async function awardLessonCompletion(usuarioId, aulaId) {
   const pool = await getPool();
-  const result = await pool.request()
-    .input('usuarioId', sql.Int, usuarioId)
-    .input('aulaId', sql.Int, aulaId)
-    .query(`
+  const result = await pool.request().input('usuarioId', sql.Int, usuarioId).input('aulaId', sql.Int, aulaId).query(`
       SET NOCOUNT ON;
       SET XACT_ABORT ON;
 
@@ -144,21 +144,20 @@ async function awardLessonCompletion(usuarioId, aulaId) {
         THROW;
       END CATCH;
     `);
-
   const summary = result.recordsets?.[0]?.[0] || {
     xpAula: 0,
     xpConquistas: 0,
     xpTotal: 0,
     sequenciaAtual: 0,
-    melhorSequencia: 0,
+    melhorSequencia: 0
   };
-
   return {
     ...summary,
     xpGanho: Number(summary.xpAula || 0) + Number(summary.xpConquistas || 0),
     novasConquistas: result.recordsets?.[1] || [],
-    nivel: Math.floor(Number(summary.xpTotal || 0) / 100) + 1,
+    nivel: Math.floor(Number(summary.xpTotal || 0) / 100) + 1
   };
 }
-
-module.exports = { awardLessonCompletion };
+module.exports = {
+  awardLessonCompletion
+};

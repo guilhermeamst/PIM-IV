@@ -30,7 +30,8 @@ namespace PlataformaCursos
         public FrmLogin()
         {
             InitializeComponent();
-            if (afr_ponte.Ativa()) {
+            if (afr_ponte.Ativa())
+            {
                 var cadastro = new LinkLabel { Text = "Criar conta", AutoSize = true, Location = new Point(270, 285) };
                 cadastro.LinkClicked += (sender, args) => Cadastrar();
                 Controls.Add(cadastro);
@@ -74,17 +75,28 @@ namespace PlataformaCursos
         {
             string afr_mensagem;
 
-            if (afr_ponte.Ativa()) {
+            if (afr_ponte.Ativa())
+            {
                 var cliente = ConfiguracaoApi.ObterCliente();
                 var resposta = cliente.Entrar(afr_txtEmail.Text, afr_txtSenha.Text);
-                if (resposta.afr_Ok) {
+                if (resposta.afr_Ok)
+                {
                     using var doc = JsonDocument.Parse(resposta.afr_CorpoJson);
-                    if (doc.RootElement.TryGetProperty("tokenPrimeiroAcesso", out var token)) {
+                    if (doc.RootElement.TryGetProperty("tokenPrimeiroAcesso", out var token))
+                    {
                         var campos = Solicitar("Primeiro acesso", new[] { "Nova senha", "Confirmar senha" }, new[] { true, true });
                         if (campos == null) return;
-                        if (campos[0] != campos[1]) { MessageBox.Show("As senhas nao conferem."); return; }
+                        if (campos[0] != campos[1])
+                        {
+                            MessageBox.Show("As senhas nao conferem.");
+                            return;
+                        }
                         var troca = cliente.PrimeiroAcesso(token.GetString(), afr_txtSenha.Text, campos[0]);
-                        if (!troca.afr_Ok) { MessageBox.Show(troca.afr_Mensagem); return; }
+                        if (!troca.afr_Ok)
+                        {
+                            MessageBox.Show(troca.afr_Mensagem);
+                            return;
+                        }
                         MessageBox.Show("Guarde seu codigo de recuperacao: " + troca.CodigoRecuperacao);
                         afr_txtSenha.Text = campos[0];
                     }
@@ -137,7 +149,8 @@ namespace PlataformaCursos
         {
             using var janela = new Form { Text = titulo, ClientSize = new Size(380, rotulos.Length * 65 + 55), StartPosition = FormStartPosition.CenterParent, FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false };
             var entradas = new TextBox[rotulos.Length];
-            for (int i = 0; i < rotulos.Length; i++) {
+            for (int i = 0; i < rotulos.Length; i++)
+            {
                 janela.Controls.Add(new Label { Text = rotulos[i], Location = new Point(20, 10 + i*65), AutoSize = true });
                 entradas[i] = new TextBox { Location = new Point(20, 32 + i*65), Width = 340, UseSystemPasswordChar = secretos[i] };
                 janela.Controls.Add(entradas[i]);

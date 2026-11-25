@@ -606,10 +606,22 @@ namespace PlataformaCursosWeb.Models
         {
             int afr_nivel = ObterNivel();
 
-            if (afr_nivel <= 2) { return "Iniciante"; }
-            if (afr_nivel <= 4) { return "Aprendiz"; }
-            if (afr_nivel <= 7) { return "Dedicado"; }
-            if (afr_nivel <= 10) { return "Veterano"; }
+            if (afr_nivel <= 2)
+            {
+                return "Iniciante";
+            }
+            if (afr_nivel <= 4)
+            {
+                return "Aprendiz";
+            }
+            if (afr_nivel <= 7)
+            {
+                return "Dedicado";
+            }
+            if (afr_nivel <= 10)
+            {
+                return "Veterano";
+            }
 
             return "Mestre";
         }
@@ -789,9 +801,18 @@ namespace PlataformaCursosWeb.Models
                 return "";
             }
 
-            if (afr_Posicao == 1) { return "1o"; }
-            if (afr_Posicao == 2) { return "2o"; }
-            if (afr_Posicao == 3) { return "3o"; }
+            if (afr_Posicao == 1)
+            {
+                return "1o";
+            }
+            if (afr_Posicao == 2)
+            {
+                return "2o";
+            }
+            if (afr_Posicao == 3)
+            {
+                return "3o";
+            }
 
             return afr_Posicao + "o";
         }

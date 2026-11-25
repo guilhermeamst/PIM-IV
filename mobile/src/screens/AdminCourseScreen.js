@@ -1,209 +1,153 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import api from '../services/api';
-
-export default function AdminCourseScreen({ route, navigation }) {
+export default function AdminCourseScreen({
+  route,
+  navigation
+}) {
   const edit = route.params?.mode === 'edit';
   const initial = route.params?.course;
-
   const [titulo, setTitulo] = useState(initial?.titulo || '');
   const [descricao, setDescricao] = useState(initial?.descricao || '');
-  const [carga, setCarga] = useState(
-    String(initial?.cargaHoraria || '')
-  );
+  const [carga, setCarga] = useState(String(initial?.cargaHoraria || ''));
   const [ativo, setAtivo] = useState(initial?.ativo !== false);
-
   const [aulas, setAulas] = useState([]);
   const [aulaTitulo, setAulaTitulo] = useState('');
   const [aulaDuracao, setAulaDuracao] = useState('45');
-  const [aulaConteudo,setAulaConteudo] = useState('');
-  const [editingLesson,setEditingLesson] = useState(null);
-  const [lessonBusy,setLessonBusy] = useState(false);
-  function resetLesson(){setEditingLesson(null);setAulaTitulo('');setAulaDuracao('45');setAulaConteudo('');}
-  async function editLesson(aula){if(lessonBusy)return;setLessonBusy(true);try{const {data}=await api.get(`/aulas/${aula.id}`);setEditingLesson(aula.id);setAulaTitulo(data.titulo);setAulaDuracao(String(data.duracaoMin));setAulaConteudo(data.conteudo || '');}catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao carregar aula.');}finally{setLessonBusy(false);}}
-
+  const [aulaConteudo, setAulaConteudo] = useState('');
+  const [editingLesson, setEditingLesson] = useState(null);
+  const [lessonBusy, setLessonBusy] = useState(false);
+  function resetLesson() {
+    setEditingLesson(null);
+    setAulaTitulo('');
+    setAulaDuracao('45');
+    setAulaConteudo('');
+  }
+  async function editLesson(aula) {
+    if (lessonBusy) return;
+    setLessonBusy(true);
+    try {
+      const {
+        data
+      } = await api.get(`/aulas/${aula.id}`);
+      setEditingLesson(aula.id);
+      setAulaTitulo(data.titulo);
+      setAulaDuracao(String(data.duracaoMin));
+      setAulaConteudo(data.conteudo || '');
+    } catch (e) {
+      Alert.alert('Erro', e.response?.data?.message || 'Falha ao carregar aula.');
+    } finally {
+      setLessonBusy(false);
+    }
+  }
   useEffect(() => {
     if (edit) {
       load();
     }
   }, []);
-
   async function load() {
     try {
       const response = await api.get(`/cursos/${initial.id}`);
       setAulas(response.data.aulas);
     } catch (error) {
-      Alert.alert(
-        'Erro',
-        'Não foi possível carregar as aulas.'
-      );
+      Alert.alert('Erro', 'Não foi possível carregar as aulas.');
     }
   }
-
   async function salvar() {
     try {
       const dadosCurso = {
         titulo,
         descricao,
         cargaHoraria: Number(carga),
-        ativo,
+        ativo
       };
-
       if (edit) {
-        await api.put(
-          `/admin/cursos/${initial.id}`,
-          dadosCurso
-        );
+        await api.put(`/admin/cursos/${initial.id}`, dadosCurso);
       } else {
-        await api.post(
-          '/admin/cursos',
-          dadosCurso
-        );
+        await api.post('/admin/cursos', dadosCurso);
       }
-
-      Alert.alert(
-        'Sucesso',
-        edit ? 'Curso atualizado.' : 'Curso criado.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('Sucesso', edit ? 'Curso atualizado.' : 'Curso criado.', [{
+        text: 'OK',
+        onPress: () => navigation.goBack()
+      }]);
     } catch (error) {
-      Alert.alert(
-        'Erro',
-        error.response?.data?.message ||
-          'Falha ao salvar.'
-      );
+      Alert.alert('Erro', error.response?.data?.message || 'Falha ao salvar.');
     }
   }
-
   async function addAula() {
-    if(lessonBusy)return;
-    const titulo=aulaTitulo.trim(), duracaoMin=Number(aulaDuracao);
-    if(!titulo || titulo.length>300 || !aulaDuracao.trim() || !Number.isInteger(duracaoMin) || duracaoMin<0 || duracaoMin>2147483647) return Alert.alert('Atenção','Informe título e duração válidos.');
+    if (lessonBusy) return;
+    const titulo = aulaTitulo.trim(),
+      duracaoMin = Number(aulaDuracao);
+    if (!titulo || titulo.length > 300 || !aulaDuracao.trim() || !Number.isInteger(duracaoMin) || duracaoMin < 0 || duracaoMin > 2147483647) return Alert.alert('Atenção', 'Informe título e duração válidos.');
     setLessonBusy(true);
-    try{const payload={titulo,duracaoMin,conteudo:aulaConteudo};
-      if(editingLesson) await api.put(`/admin/aulas/${editingLesson}`,payload);
-      else await api.post(`/admin/cursos/${initial.id}/aulas`,payload);
-      resetLesson();await load();
-    }catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao salvar aula.');}finally{setLessonBusy(false);}
+    try {
+      const payload = {
+        titulo,
+        duracaoMin,
+        conteudo: aulaConteudo
+      };
+      if (editingLesson) await api.put(`/admin/aulas/${editingLesson}`, payload);else await api.post(`/admin/cursos/${initial.id}/aulas`, payload);
+      resetLesson();
+      await load();
+    } catch (e) {
+      Alert.alert('Erro', e.response?.data?.message || 'Falha ao salvar aula.');
+    } finally {
+      setLessonBusy(false);
+    }
   }
-
   async function delAula(id) {
     try {
       await api.delete(`/admin/aulas/${id}`);
       await load();
     } catch (error) {
-      Alert.alert(
-        'Erro',
-        error.response?.data?.message ||
-          'Falha ao excluir aula.'
-      );
+      Alert.alert('Erro', error.response?.data?.message || 'Falha ao excluir aula.');
     }
   }
-
   function excluir() {
-    Alert.alert(
-      'Excluir',
-      'Deseja excluir este curso?',
-      [
-        {
-          text: 'Cancelar',
-        },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(
-                `/admin/cursos/${initial.id}`
-              );
-
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert(
-                'Erro',
-                error.response?.data?.message ||
-                  'Falha ao excluir.'
-              );
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Excluir', 'Deseja excluir este curso?', [{
+      text: 'Cancelar'
+    }, {
+      text: 'Excluir',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          await api.delete(`/admin/cursos/${initial.id}`);
+          navigation.goBack();
+        } catch (error) {
+          Alert.alert('Erro', error.response?.data?.message || 'Falha ao excluir.');
+        }
+      }
+    }]);
   }
-
-  return (
-    <ScrollView style={styles.container}>
+  return <ScrollView style={styles.container}>
       <Text style={styles.title}>
         {edit ? 'Editar curso' : 'Novo curso'}
       </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Título"
-        value={titulo}
-        onChangeText={setTitulo}
-      />
+      <TextInput style={styles.input} placeholder="Título" value={titulo} onChangeText={setTitulo} />
 
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Descrição"
-        multiline
-        value={descricao}
-        onChangeText={setDescricao}
-      />
+      <TextInput style={[styles.input, styles.textArea]} placeholder="Descrição" multiline value={descricao} onChangeText={setDescricao} />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Carga horária"
-        keyboardType="numeric"
-        value={carga}
-        onChangeText={setCarga}
-      />
+      <TextInput style={styles.input} placeholder="Carga horária" keyboardType="numeric" value={carga} onChangeText={setCarga} />
 
       <View style={styles.switchContainer}>
         <Text>Curso ativo</Text>
 
-        <Switch
-          value={ativo}
-          onValueChange={setAtivo}
-        />
+        <Switch value={ativo} onValueChange={setAtivo} />
       </View>
 
-      <Pressable
-        style={styles.button}
-        onPress={salvar}
-      >
+      <Pressable style={styles.button} onPress={salvar}>
         <Text style={styles.buttonText}>
           Salvar curso
         </Text>
       </Pressable>
 
-      {edit && (
-        <>
+      {edit && <>
           <Text style={styles.heading}>
             Aulas
           </Text>
 
-          {aulas.map((aula) => (
-            <View
-              style={styles.lesson}
-              key={aula.id}
-            >
+          {aulas.map(aula => <View style={styles.lesson} key={aula.id}>
               <View style={styles.lessonInfo}>
                 <Text style={styles.lessonTitle}>
                   {aula.ordem}. {aula.titulo}
@@ -214,151 +158,121 @@ export default function AdminCourseScreen({ route, navigation }) {
                 </Text>
               </View>
 
-              <Pressable disabled={lessonBusy} onPress={() => editLesson(aula)}><Text style={{color:"#2563eb",padding:5,fontWeight:"700"}}>Editar</Text></Pressable>
-              <Pressable
-                onPress={() => delAula(aula.id)}
-              >
+              <Pressable disabled={lessonBusy} onPress={() => editLesson(aula)}><Text style={{
+            color: "#2563eb",
+            padding: 5,
+            fontWeight: "700"
+          }}>Editar</Text></Pressable>
+              <Pressable onPress={() => delAula(aula.id)}>
                 <Text style={styles.deleteText}>
                   Excluir
                 </Text>
               </Pressable>
-            </View>
-          ))}
+            </View>)}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Título da nova aula"
-            value={aulaTitulo}
-            onChangeText={setAulaTitulo}
-          />
+          <TextInput style={styles.input} placeholder="Título da nova aula" value={aulaTitulo} onChangeText={setAulaTitulo} />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Duração em minutos"
-            keyboardType="numeric"
-            value={aulaDuracao}
-            onChangeText={setAulaDuracao}
-          />
+          <TextInput style={styles.input} placeholder="Duração em minutos" keyboardType="numeric" value={aulaDuracao} onChangeText={setAulaDuracao} />
 
-          <TextInput style={[styles.input,styles.textArea]} placeholder="Conteúdo da aula" multiline value={aulaConteudo} onChangeText={setAulaConteudo} editable={!lessonBusy}/>
-          {editingLesson && <Pressable onPress={resetLesson} disabled={lessonBusy}><Text style={{color:"#2563eb",padding:10}}>Cancelar edição</Text></Pressable>}
-          <Pressable
-            style={styles.secondaryButton}
-            disabled={lessonBusy} onPress={addAula}
-          >
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Conteúdo da aula" multiline value={aulaConteudo} onChangeText={setAulaConteudo} editable={!lessonBusy} />
+          {editingLesson && <Pressable onPress={resetLesson} disabled={lessonBusy}><Text style={{
+          color: "#2563eb",
+          padding: 10
+        }}>Cancelar edição</Text></Pressable>}
+          <Pressable style={styles.secondaryButton} disabled={lessonBusy} onPress={addAula}>
             <Text style={styles.secondaryButtonText}>
               {editingLesson ? 'Salvar aula' : 'Adicionar aula'}
             </Text>
           </Pressable>
 
-          <Pressable
-            style={styles.dangerButton}
-            onPress={excluir}
-          >
+          <Pressable style={styles.dangerButton} onPress={excluir}>
             <Text style={styles.buttonText}>
               Excluir curso
             </Text>
           </Pressable>
-        </>
-      )}
-    </ScrollView>
-  );
+        </>}
+    </ScrollView>;
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f4f6f8',
-    padding: 18,
+    padding: 18
   },
-
   title: {
     fontSize: 25,
     fontWeight: '800',
-    marginBottom: 18,
+    marginBottom: 18
   },
-
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 10,
     padding: 13,
-    marginBottom: 10,
+    marginBottom: 10
   },
-
   textArea: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: 'top'
   },
-
   switchContainer: {
     backgroundColor: '#fff',
     padding: 14,
     borderRadius: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 12
   },
-
   button: {
     backgroundColor: '#2563eb',
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: 'center'
   },
-
   buttonText: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '700'
   },
-
   heading: {
     fontSize: 20,
     fontWeight: '800',
-    marginVertical: 18,
+    marginVertical: 18
   },
-
   lesson: {
     backgroundColor: '#fff',
     padding: 14,
     borderRadius: 10,
     flexDirection: 'row',
-    marginBottom: 8,
+    marginBottom: 8
   },
-
   lessonInfo: {
-    flex: 1,
+    flex: 1
   },
-
   lessonTitle: {
-    fontWeight: '700',
+    fontWeight: '700'
   },
-
   deleteText: {
     color: '#dc2626',
-    fontWeight: '700',
+    fontWeight: '700'
   },
-
   secondaryButton: {
     backgroundColor: '#fff',
     padding: 14,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#2563eb',
-    alignItems: 'center',
+    alignItems: 'center'
   },
-
   secondaryButtonText: {
     color: '#2563eb',
-    fontWeight: '700',
+    fontWeight: '700'
   },
-
   dangerButton: {
     backgroundColor: '#dc2626',
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
-    marginVertical: 20,
-  },
+    marginVertical: 20
+  }
 });

@@ -1,5 +1,7 @@
 const crypto = require('crypto');
-const { promisify } = require('util');
+const {
+  promisify
+} = require('util');
 const scrypt = promisify(crypto.scrypt);
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -19,13 +21,28 @@ function validateAccount(body, publicSignup = false) {
   const nome = typeof body?.nome === 'string' ? body.nome.trim() : '';
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
   const senha = typeof body?.senha === 'string' ? body.senha : '';
-  const perfil = publicSignup ? 'ALUNO' : (typeof body?.perfil === 'string' ? body.perfil.toUpperCase() : '');
-  if (nome.length < 3 || nome.length > 200) return { error: 'Informe um nome entre 3 e 200 caracteres.' };
-  if (email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Informe um email valido.' };
-  if (senha.length < 8 || senha.length > 128) return { error: 'A senha deve ter entre 8 e 128 caracteres.' };
-  if (publicSignup && senha !== body.confirmarSenha) return { error: 'As senhas nao conferem.' };
-  if (!['ALUNO', 'PROFESSOR', 'ADMIN'].includes(perfil)) return { error: 'Perfil invalido.' };
-  return { nome, email, senha, perfil };
+  const perfil = publicSignup ? 'ALUNO' : typeof body?.perfil === 'string' ? body.perfil.toUpperCase() : '';
+  if (nome.length < 3 || nome.length > 200) return {
+    error: 'Informe um nome entre 3 e 200 caracteres.'
+  };
+  if (email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return {
+    error: 'Informe um email valido.'
+  };
+  if (senha.length < 8 || senha.length > 128) return {
+    error: 'A senha deve ter entre 8 e 128 caracteres.'
+  };
+  if (publicSignup && senha !== body.confirmarSenha) return {
+    error: 'As senhas nao conferem.'
+  };
+  if (!['ALUNO', 'PROFESSOR', 'ADMIN'].includes(perfil)) return {
+    error: 'Perfil invalido.'
+  };
+  return {
+    nome,
+    email,
+    senha,
+    perfil
+  };
 }
 function newRecoveryCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -39,5 +56,11 @@ function codeDigest(code) {
 function normalizeCode(code) {
   return typeof code === 'string' ? code.trim().toUpperCase().replace(/[-\s]/g, '') : '';
 }
-
-module.exports = { hashPassword, verifyPassword, validateAccount, newRecoveryCode, codeDigest, normalizeCode };
+module.exports = {
+  hashPassword,
+  verifyPassword,
+  validateAccount,
+  newRecoveryCode,
+  codeDigest,
+  normalizeCode
+};

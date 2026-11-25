@@ -1,43 +1,48 @@
-import React, {
-  useCallback,
-  useState,
-} from 'react';
-
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-
+import React, { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
-
-export default function ProfessorCourseScreen({ route, navigation }) {
+export default function ProfessorCourseScreen({
+  route,
+  navigation
+}) {
   const initialCourse = route.params?.course || null;
   const isEditing = route.params?.mode === 'edit' && !!initialCourse;
-
   const [titulo, setTitulo] = useState(initialCourse?.titulo || '');
   const [descricao, setDescricao] = useState(initialCourse?.descricao || '');
-  const [cargaHoraria, setCargaHoraria] = useState(
-    initialCourse ? String(initialCourse.cargaHoraria) : '0'
-  );
+  const [cargaHoraria, setCargaHoraria] = useState(initialCourse ? String(initialCourse.cargaHoraria) : '0');
   const [aulas, setAulas] = useState([]);
   const [aulaTitulo, setAulaTitulo] = useState('');
   const [aulaDuracao, setAulaDuracao] = useState('45');
-  const [aulaConteudo,setAulaConteudo] = useState('');
-  const [editingLesson,setEditingLesson] = useState(null);
-  const [lessonBusy,setLessonBusy] = useState(false);
-  function resetLesson(){setEditingLesson(null);setAulaTitulo('');setAulaDuracao('45');setAulaConteudo('');}
-  async function editLesson(aula){if(lessonBusy)return;setLessonBusy(true);try{const {data}=await api.get(`/aulas/${aula.id}`);setEditingLesson(aula.id);setAulaTitulo(data.titulo);setAulaDuracao(String(data.duracaoMin));setAulaConteudo(data.conteudo || '');}catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao carregar aula.');}finally{setLessonBusy(false);}}
+  const [aulaConteudo, setAulaConteudo] = useState('');
+  const [editingLesson, setEditingLesson] = useState(null);
+  const [lessonBusy, setLessonBusy] = useState(false);
+  function resetLesson() {
+    setEditingLesson(null);
+    setAulaTitulo('');
+    setAulaDuracao('45');
+    setAulaConteudo('');
+  }
+  async function editLesson(aula) {
+    if (lessonBusy) return;
+    setLessonBusy(true);
+    try {
+      const {
+        data
+      } = await api.get(`/aulas/${aula.id}`);
+      setEditingLesson(aula.id);
+      setAulaTitulo(data.titulo);
+      setAulaDuracao(String(data.duracaoMin));
+      setAulaConteudo(data.conteudo || '');
+    } catch (e) {
+      Alert.alert('Erro', e.response?.data?.message || 'Falha ao carregar aula.');
+    } finally {
+      setLessonBusy(false);
+    }
+  }
   const [saving, setSaving] = useState(false);
-
   async function loadLessons() {
     if (!isEditing) return;
-
     try {
       const response = await api.get(`/professor/cursos/${initialCourse.id}/aulas`);
       setAulas(response.data);
@@ -45,36 +50,27 @@ export default function ProfessorCourseScreen({ route, navigation }) {
       Alert.alert('Erro', error.response?.data?.message || 'Falha ao carregar aulas.');
     }
   }
-
-  useFocusEffect(
-    useCallback(() => {
-      loadLessons();
-    }, [initialCourse?.id])
-  );
-
+  useFocusEffect(useCallback(() => {
+    loadLessons();
+  }, [initialCourse?.id]));
   async function saveCourse() {
     const title = titulo.trim();
     const hours = Number(cargaHoraria);
-
     if (!title) {
       Alert.alert('Atenção', 'Informe o título do curso.');
       return;
     }
-
     if (!Number.isInteger(hours) || hours < 0) {
       Alert.alert('Atenção', 'Informe uma carga horária válida.');
       return;
     }
-
     setSaving(true);
-
     try {
       const payload = {
         titulo: title,
         descricao: descricao.trim(),
-        cargaHoraria: hours,
+        cargaHoraria: hours
       };
-
       if (isEditing) {
         await api.put(`/professor/cursos/${initialCourse.id}`, payload);
         Alert.alert('Sucesso', 'Curso atualizado.');
@@ -85,8 +81,8 @@ export default function ProfessorCourseScreen({ route, navigation }) {
           mode: 'edit',
           course: {
             id: response.data.id,
-            ...payload,
-          },
+            ...payload
+          }
         });
       }
     } catch (error) {
@@ -95,147 +91,117 @@ export default function ProfessorCourseScreen({ route, navigation }) {
       setSaving(false);
     }
   }
-
   async function addLesson() {
-    if(lessonBusy)return;
-    const titulo=aulaTitulo.trim(), duracaoMin=Number(aulaDuracao);
-    if(!titulo || titulo.length>300 || !aulaDuracao.trim() || !Number.isInteger(duracaoMin) || duracaoMin<0 || duracaoMin>2147483647) return Alert.alert('Atenção','Informe título e duração válidos.');
+    if (lessonBusy) return;
+    const titulo = aulaTitulo.trim(),
+      duracaoMin = Number(aulaDuracao);
+    if (!titulo || titulo.length > 300 || !aulaDuracao.trim() || !Number.isInteger(duracaoMin) || duracaoMin < 0 || duracaoMin > 2147483647) return Alert.alert('Atenção', 'Informe título e duração válidos.');
     setLessonBusy(true);
-    try{const payload={titulo,duracaoMin,conteudo:aulaConteudo};
-      if(editingLesson) await api.put(`/professor/aulas/${editingLesson}`,payload);
-      else await api.post(`/professor/cursos/${initialCourse.id}/aulas`,payload);
-      resetLesson();await loadLessons();
-    }catch(e){Alert.alert('Erro',e.response?.data?.message||'Falha ao salvar aula.');}finally{setLessonBusy(false);}
+    try {
+      const payload = {
+        titulo,
+        duracaoMin,
+        conteudo: aulaConteudo
+      };
+      if (editingLesson) await api.put(`/professor/aulas/${editingLesson}`, payload);else await api.post(`/professor/cursos/${initialCourse.id}/aulas`, payload);
+      resetLesson();
+      await loadLessons();
+    } catch (e) {
+      Alert.alert('Erro', e.response?.data?.message || 'Falha ao salvar aula.');
+    } finally {
+      setLessonBusy(false);
+    }
   }
-
   function deleteLesson(lesson) {
-    Alert.alert(
-      'Excluir aula',
-      `Deseja excluir “${lesson.titulo}”? O progresso relacionado também será removido.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/professor/aulas/${lesson.id}`);
-              await loadLessons();
-            } catch (error) {
-              Alert.alert('Erro', error.response?.data?.message || 'Falha ao excluir aula.');
-            }
-          },
-        },
-      ]
-    );
+    Alert.alert('Excluir aula', `Deseja excluir “${lesson.titulo}”? O progresso relacionado também será removido.`, [{
+      text: 'Cancelar',
+      style: 'cancel'
+    }, {
+      text: 'Excluir',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          await api.delete(`/professor/aulas/${lesson.id}`);
+          await loadLessons();
+        } catch (error) {
+          Alert.alert('Erro', error.response?.data?.message || 'Falha ao excluir aula.');
+        }
+      }
+    }]);
   }
-
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{isEditing ? 'Gerenciar curso' : 'Novo curso'}</Text>
 
       <Text style={styles.label}>Título</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Nome do curso"
-        value={titulo}
-        onChangeText={setTitulo}
-        maxLength={200}
-      />
+      <TextInput style={styles.input} placeholder="Nome do curso" value={titulo} onChangeText={setTitulo} maxLength={200} />
 
       <Text style={styles.label}>Descrição</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Descreva o conteúdo do curso"
-        value={descricao}
-        onChangeText={setDescricao}
-        multiline
-      />
+      <TextInput style={[styles.input, styles.textArea]} placeholder="Descreva o conteúdo do curso" value={descricao} onChangeText={setDescricao} multiline />
 
       <Text style={styles.label}>Carga horária (horas)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Carga horária"
-        value={cargaHoraria}
-        onChangeText={setCargaHoraria}
-        keyboardType="numeric"
-      />
+      <TextInput style={styles.input} placeholder="Carga horária" value={cargaHoraria} onChangeText={setCargaHoraria} keyboardType="numeric" />
 
       <Pressable style={[styles.primaryButton, saving && styles.disabled]} onPress={saveCourse} disabled={saving}>
         <Text style={styles.primaryButtonText}>{saving ? 'Salvando...' : 'Salvar curso'}</Text>
       </Pressable>
 
-      {isEditing && (
-        <>
-          <Pressable
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('ProfessorAlunos', {
-              courseId: initialCourse.id,
-              courseTitle: titulo,
-            })}
-          >
+      {isEditing && <>
+          <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('ProfessorAlunos', {
+        courseId: initialCourse.id,
+        courseTitle: titulo
+      })}>
             <Text style={styles.secondaryButtonText}>Ver alunos e progresso</Text>
           </Pressable>
 
           <Text style={styles.sectionTitle}>Aulas do curso</Text>
 
-          {aulas.map((lesson) => (
-            <View style={styles.lesson} key={lesson.id}>
+          {aulas.map(lesson => <View style={styles.lesson} key={lesson.id}>
               <View style={styles.lessonInfo}>
                 <Text style={styles.lessonTitle}>{lesson.ordem}. {lesson.titulo}</Text>
                 <Text style={styles.lessonDuration}>{lesson.duracaoMin} min</Text>
               </View>
-              <Pressable disabled={lessonBusy} onPress={() => editLesson(lesson)}><Text style={{color:"#2563eb",padding:5,fontWeight:"700"}}>Editar</Text></Pressable>
+              <Pressable disabled={lessonBusy} onPress={() => editLesson(lesson)}><Text style={{
+            color: "#2563eb",
+            padding: 5,
+            fontWeight: "700"
+          }}>Editar</Text></Pressable>
               <Pressable onPress={() => deleteLesson(lesson)}>
                 <Text style={styles.deleteText}>Excluir</Text>
               </Pressable>
-            </View>
-          ))}
+            </View>)}
 
           <Text style={styles.sectionTitle}>{editingLesson ? 'Salvar aula' : 'Adicionar aula'}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Título da aula"
-            value={aulaTitulo}
-            onChangeText={setAulaTitulo}
-            maxLength={300}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Duração em minutos"
-            value={aulaDuracao}
-            onChangeText={setAulaDuracao}
-            keyboardType="numeric"
-          />
-          <TextInput style={[styles.input,styles.textArea]} placeholder="Conteúdo da aula" multiline value={aulaConteudo} onChangeText={setAulaConteudo} editable={!lessonBusy}/>
-          {editingLesson && <Pressable onPress={resetLesson} disabled={lessonBusy}><Text style={{color:"#2563eb",padding:10}}>Cancelar edição</Text></Pressable>}
+          <TextInput style={styles.input} placeholder="Título da aula" value={aulaTitulo} onChangeText={setAulaTitulo} maxLength={300} />
+          <TextInput style={styles.input} placeholder="Duração em minutos" value={aulaDuracao} onChangeText={setAulaDuracao} keyboardType="numeric" />
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Conteúdo da aula" multiline value={aulaConteudo} onChangeText={setAulaConteudo} editable={!lessonBusy} />
+          {editingLesson && <Pressable onPress={resetLesson} disabled={lessonBusy}><Text style={{
+          color: "#2563eb",
+          padding: 10
+        }}>Cancelar edição</Text></Pressable>}
           <Pressable style={styles.primaryButton} disabled={lessonBusy} onPress={addLesson}>
             <Text style={styles.primaryButtonText}>{editingLesson ? 'Salvar aula' : 'Adicionar aula'}</Text>
           </Pressable>
-        </>
-      )}
-    </ScrollView>
-  );
+        </>}
+    </ScrollView>;
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f4f6f8',
+    backgroundColor: '#f4f6f8'
   },
   content: {
     padding: 18,
-    paddingBottom: 35,
+    paddingBottom: 35
   },
   title: {
     fontSize: 25,
     fontWeight: '800',
-    marginBottom: 20,
+    marginBottom: 20
   },
   label: {
     fontWeight: '700',
     color: '#344054',
-    marginBottom: 6,
+    marginBottom: 6
   },
   input: {
     backgroundColor: '#fff',
@@ -243,25 +209,25 @@ const styles = StyleSheet.create({
     borderColor: '#d0d5dd',
     borderRadius: 10,
     padding: 13,
-    marginBottom: 14,
+    marginBottom: 14
   },
   textArea: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: 'top'
   },
   primaryButton: {
     backgroundColor: '#2563eb',
     borderRadius: 10,
     padding: 15,
     alignItems: 'center',
-    marginTop: 3,
+    marginTop: 3
   },
   primaryButtonText: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '800'
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.6
   },
   secondaryButton: {
     backgroundColor: '#fff',
@@ -270,17 +236,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 14
   },
   secondaryButtonText: {
     color: '#2563eb',
-    fontWeight: '800',
+    fontWeight: '800'
   },
   sectionTitle: {
     fontSize: 19,
     fontWeight: '800',
     marginTop: 25,
-    marginBottom: 12,
+    marginBottom: 12
   },
   lesson: {
     backgroundColor: '#fff',
@@ -288,21 +254,21 @@ const styles = StyleSheet.create({
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 8
   },
   lessonInfo: {
-    flex: 1,
+    flex: 1
   },
   lessonTitle: {
-    fontWeight: '700',
+    fontWeight: '700'
   },
   lessonDuration: {
     color: '#667085',
-    marginTop: 4,
+    marginTop: 4
   },
   deleteText: {
     color: '#dc2626',
     fontWeight: '700',
-    padding: 5,
-  },
+    padding: 5
+  }
 });

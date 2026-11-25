@@ -1,43 +1,69 @@
 const jwt = require('jsonwebtoken');
-const { sql, getPool } = require('./db');
-
+const {
+  sql,
+  getPool
+} = require('./db');
 async function auth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ message: 'Token nao informado.' });
-
+  if (!token) return res.status(401).json({
+    message: 'Token nao informado.'
+  });
   try {
-    const claims = jwt.verify(token, require('./jwtSecret'), { algorithms: ['HS256'] })
-    if (claims.finalidade) return res.status(403).json({ message: 'Token restrito ao primeiro acesso.' });
+    const claims = jwt.verify(token, require('./jwtSecret'), {
+      algorithms: ['HS256']
+    });
+    if (claims.finalidade) return res.status(403).json({
+      message: 'Token restrito ao primeiro acesso.'
+    });
     const pool = await getPool();
-    const result = await pool.request().input('id', sql.Int, claims.id)
-      .query('SELECT TOP 1 Id, Nome, Email, Perfil, Ativo, PrimeiroAcesso, Senha FROM dbo.Usuarios WHERE Id=@id');
+    const result = await pool.request().input('id', sql.Int, claims.id).query('SELECT TOP 1 Id, Nome, Email, Perfil, Ativo, PrimeiroAcesso, Senha FROM dbo.Usuarios WHERE Id=@id');
     const account = result.recordset[0];
-    if (!account || !account.Ativo) return res.status(401).json({ message: 'Conta inexistente ou inativa.' });
-    if (account.PrimeiroAcesso) return res.status(403).json({ message: 'Conclua o primeiro acesso.' });
-    if (claims.pwd !== require('./passwordStamp')(account.Senha)) return res.status(401).json({message:'Sessao expirada. Entre novamente.'});
-    req.user = { id: account.Id, nome: account.Nome, email: account.Email, perfil: account.Perfil };
+    if (!account || !account.Ativo) return res.status(401).json({
+      message: 'Conta inexistente ou inativa.'
+    });
+    if (account.PrimeiroAcesso) return res.status(403).json({
+      message: 'Conclua o primeiro acesso.'
+    });
+    if (claims.pwd !== require('./passwordStamp')(account.Senha)) return res.status(401).json({
+      message: 'Sessao expirada. Entre novamente.'
+    });
+    req.user = {
+      id: account.Id,
+      nome: account.Nome,
+      email: account.Email,
+      perfil: account.Perfil
+    };
     next();
   } catch {
-    return res.status(401).json({ message: 'Token invalido ou expirado.' });
+    return res.status(401).json({
+      message: 'Token invalido ou expirado.'
+    });
   }
 }
-
 function studentOnly(req, res, next) {
-  if (req.user?.perfil !== 'ALUNO') return res.status(403).json({ message: 'Acesso restrito a alunos.' });
+  if (req.user?.perfil !== 'ALUNO') return res.status(403).json({
+    message: 'Acesso restrito a alunos.'
+  });
   next();
 }
-
 function professorOnly(req, res, next) {
-  if (req.user?.perfil !== 'PROFESSOR') return res.status(403).json({ message: 'Acesso restrito a professores.' });
+  if (req.user?.perfil !== 'PROFESSOR') return res.status(403).json({
+    message: 'Acesso restrito a professores.'
+  });
   next();
 }
-
 function adminOnly(req, res, next) {
   if (req.user?.perfil !== 'ADMIN') {
-    return res.status(403).json({ message: 'Acesso permitido somente para administradores.' });
+    return res.status(403).json({
+      message: 'Acesso permitido somente para administradores.'
+    });
   }
   next();
 }
-
-module.exports = { auth, adminOnly, professorOnly, studentOnly };
+module.exports = {
+  auth,
+  adminOnly,
+  professorOnly,
+  studentOnly
+};

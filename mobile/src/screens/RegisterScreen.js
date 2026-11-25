@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import api from '../services/api';
-
-export default function RegisterScreen({ navigation }) {
+export default function RegisterScreen({
+  navigation
+}) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -15,17 +16,31 @@ export default function RegisterScreen({ navigation }) {
     if (senha.length < 8) return Alert.alert('Cadastro', 'A senha deve ter pelo menos 8 caracteres.');
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', { nome: nome.trim(), email: email.trim(), senha, confirmarSenha });
-      if (data.codigoRecuperacao) setCodigo(data.codigoRecuperacao);
-      else Alert.alert('Conta criada', 'A API não retornou o código. Procure o administrador.', [{ text: 'Entrar', onPress: () => navigation.navigate('Login') }]);
+      const {
+        data
+      } = await api.post('/auth/register', {
+        nome: nome.trim(),
+        email: email.trim(),
+        senha,
+        confirmarSenha
+      });
+      if (data.codigoRecuperacao) setCodigo(data.codigoRecuperacao);else Alert.alert('Conta criada', 'A API não retornou o código. Procure o administrador.', [{
+        text: 'Entrar',
+        onPress: () => navigation.navigate('Login')
+      }]);
     } catch (error) {
       Alert.alert('Cadastro', error.response?.data?.message || 'Não foi possível criar sua conta.');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
   if (codigo) return <View style={[styles.container, styles.content]}>
     <Text style={styles.title}>Conta criada!</Text>
     <Text style={styles.subtitle}>Guarde seu código de recuperação em um local seguro. Ele não poderá ser consultado depois.</Text>
-    <Text selectable style={[styles.title, {fontSize: 23, marginBottom: 24}]}>{codigo}</Text>
+    <Text selectable style={[styles.title, {
+      fontSize: 23,
+      marginBottom: 24
+    }]}>{codigo}</Text>
     <Pressable style={styles.button} onPress={() => navigation.navigate('Login')}><Text style={styles.buttonText}>Já guardei o código</Text></Pressable>
   </View>;
   return <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -35,9 +50,54 @@ export default function RegisterScreen({ navigation }) {
       <TextInput style={styles.input} placeholder="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" maxLength={200} />
       <TextInput style={styles.input} placeholder="Senha (mínimo 8 caracteres)" value={senha} onChangeText={setSenha} secureTextEntry maxLength={128} />
       <TextInput style={styles.input} placeholder="Confirmar senha" value={confirmarSenha} onChangeText={setConfirmarSenha} secureTextEntry maxLength={128} />
-      <Pressable style={styles.button} onPress={cadastrar} disabled={loading}>{loading ? <ActivityIndicator color="#fff"/> : <Text style={styles.buttonText}>Criar conta</Text>}</Pressable>
+      <Pressable style={styles.button} onPress={cadastrar} disabled={loading}>{loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Criar conta</Text>}</Pressable>
       <Pressable onPress={() => navigation.navigate('Login')}><Text style={styles.link}>Já tenho uma conta</Text></Pressable>
     </ScrollView>
   </KeyboardAvoidingView>;
 }
-const styles = StyleSheet.create({ container:{flex:1,backgroundColor:'#f4f6f8'},content:{flexGrow:1,justifyContent:'center',padding:24},title:{fontSize:28,fontWeight:'800',textAlign:'center'},subtitle:{textAlign:'center',color:'#667085',marginTop:6,marginBottom:28},input:{backgroundColor:'#fff',borderWidth:1,borderColor:'#ddd',padding:14,borderRadius:10,marginBottom:12},button:{backgroundColor:'#2563eb',padding:16,borderRadius:10,alignItems:'center'},buttonText:{color:'#fff',fontWeight:'700'},link:{color:'#2563eb',textAlign:'center',marginTop:20,fontWeight:'600'} });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f4f6f8'
+  },
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center'
+  },
+  subtitle: {
+    textAlign: 'center',
+    color: '#667085',
+    marginTop: 6,
+    marginBottom: 28
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12
+  },
+  button: {
+    backgroundColor: '#2563eb',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700'
+  },
+  link: {
+    color: '#2563eb',
+    textAlign: 'center',
+    marginTop: 20,
+    fontWeight: '600'
+  }
+});

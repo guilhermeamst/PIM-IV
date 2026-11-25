@@ -17,9 +17,17 @@ namespace PlataformaCursos {
   private void afr_btnConferir_Click(object sender, EventArgs e) {}
   private void afr_btnCancelar_Click(object sender, EventArgs e) => Close();
   private void afr_btnRedefinir_Click(object sender, EventArgs e) {
-   if(afr_txtNova.Text.Length<8 || afr_txtNova.Text!=afr_txtConfirma.Text) { MessageBox.Show("Informe senhas iguais com pelo menos 8 caracteres."); return; }
+   if(afr_txtNova.Text.Length<8 || afr_txtNova.Text!=afr_txtConfirma.Text)
+   {
+       MessageBox.Show("Informe senhas iguais com pelo menos 8 caracteres.");
+       return;
+   }
    var r=new PonteApi().RecuperarComCodigo(afr_txtEmail.Text,afr_txtCodigo.Text,afr_txtNova.Text);
-   if(!r.afr_Ok) { MessageBox.Show(r.afr_Mensagem); return; }
+   if(!r.afr_Ok)
+   {
+       MessageBox.Show(r.afr_Mensagem);
+       return;
+   }
    MessageBox.Show("Senha redefinida. Guarde o novo codigo: " + r.CodigoRecuperacao,"Recuperacao"); Close();
   }
  }

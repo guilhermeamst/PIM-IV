@@ -1,22 +1,21 @@
-
 const express = require('express');
-const { sql, getPool } = require('../db');
-const { auth } = require('../middleware');
-
+const {
+  sql,
+  getPool
+} = require('../db');
+const {
+  auth
+} = require('../middleware');
 const router = express.Router();
 
 // Middleware de acesso exclusivo para alunos
 function studentOnly(req, res, next) {
-  const perfil = String(
-    req.user?.perfil || req.user?.Perfil || ''
-  ).toUpperCase();
-
+  const perfil = String(req.user?.perfil || req.user?.Perfil || '').toUpperCase();
   if (perfil !== 'ALUNO') {
     return res.status(403).json({
       message: 'Acesso permitido apenas para alunos.'
     });
   }
-
   next();
 }
 
@@ -26,7 +25,9 @@ function studentOnly(req, res, next) {
 router.get('/turma', auth, async (req, res) => {
   const perfil = String(req.user?.perfil || '').toUpperCase();
   if (!['ADMIN', 'PROFESSOR'].includes(perfil)) {
-    return res.status(403).json({ message: 'Acesso permitido apenas a professores e administradores.' });
+    return res.status(403).json({
+      message: 'Acesso permitido apenas a professores e administradores.'
+    });
   }
   try {
     const pool = await getPool();
@@ -43,10 +44,15 @@ router.get('/turma', auth, async (req, res) => {
       WHERE u.Perfil = 'ALUNO' AND u.Ativo = 1
       ORDER BY ISNULL(g.XP, 0) DESC, u.Nome ASC, u.Id ASC
     `);
-    return res.json(result.recordset.map((aluno, index) => ({ posicao: index + 1, ...aluno })));
+    return res.json(result.recordset.map((aluno, index) => ({
+      posicao: index + 1,
+      ...aluno
+    })));
   } catch (error) {
     console.error('Erro ao consultar ranking:', error);
-    return res.status(500).json({ message: 'Erro ao consultar ranking de XP.' });
+    return res.status(500).json({
+      message: 'Erro ao consultar ranking de XP.'
+    });
   }
 });
 
@@ -55,10 +61,7 @@ router.get('/turma', auth, async (req, res) => {
 router.get('/me', auth, studentOnly, async (req, res) => {
   try {
     const pool = await getPool();
-
-    const result = await pool.request()
-      .input('usuarioId', sql.Int, req.user.id)
-      .query(`
+    const result = await pool.request().input('usuarioId', sql.Int, req.user.id).query(`
         SELECT
           ISNULL(g.XP, 0) AS xp,
           CAST(FLOOR(ISNULL(g.XP, 0) / 100.0) AS INT) + 1 AS nivel,
@@ -92,7 +95,6 @@ router.get('/me', auth, studentOnly, async (req, res) => {
           AND uc.UsuarioId = @usuarioId
         ORDER BY conquistada DESC, c.Id;
       `);
-
     const stats = result.recordsets?.[0]?.[0] || {
       xp: 0,
       nivel: 1,
@@ -100,11 +102,9 @@ router.get('/me', auth, studentOnly, async (req, res) => {
       melhorSequencia: 0,
       aulasConcluidas: 0
     };
-
     const nivel = Number(stats.nivel || 1);
     const xp = Number(stats.xp || 0);
     const xpBaseNivel = (nivel - 1) * 100;
-
     return res.json({
       ...stats,
       xp,
@@ -114,14 +114,11 @@ router.get('/me', auth, studentOnly, async (req, res) => {
       progressoNivel: xp - xpBaseNivel,
       conquistas: result.recordsets?.[1] || []
     });
-
   } catch (error) {
     console.error('Erro na gamificação:', error);
-
     return res.status(500).json({
       message: 'Erro ao carregar gamificação.'
     });
   }
 });
-
 module.exports = router;

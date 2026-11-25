@@ -154,9 +154,18 @@ namespace PlataformaCursos
         {
             List<GroupBox> afr_visiveis = new List<GroupBox>();
 
-            if (afr_grpAluno.Visible) { afr_visiveis.Add(afr_grpAluno); }
-            if (afr_grpProfessor.Visible) { afr_visiveis.Add(afr_grpProfessor); }
-            if (afr_grpAdmin.Visible) { afr_visiveis.Add(afr_grpAdmin); }
+            if (afr_grpAluno.Visible)
+            {
+                afr_visiveis.Add(afr_grpAluno);
+            }
+            if (afr_grpProfessor.Visible)
+            {
+                afr_visiveis.Add(afr_grpProfessor);
+            }
+            if (afr_grpAdmin.Visible)
+            {
+                afr_visiveis.Add(afr_grpAdmin);
+            }
 
             if (afr_visiveis.Count == 0)
             {

@@ -195,7 +195,8 @@ namespace PlataformaCursosWeb.Controllers
             Response.Headers["Cache-Control"] = "no-store";
             if (string.IsNullOrEmpty(afr_dados.afr_NovaSenha) || afr_dados.afr_NovaSenha.Length < 8 || afr_dados.afr_NovaSenha != afr_dados.afr_Confirmacao)
                 ViewBag.Erro = "Informe senhas iguais com pelo menos 8 caracteres.";
-            else {
+            else
+            {
                 var r = afr_ponte.RecuperarComCodigo(afr_dados.afr_Email, afr_dados.afr_Codigo, afr_dados.afr_NovaSenha);
                 if (r.afr_Ok) ViewBag.NovoCodigo = r.CodigoRecuperacao;
                 else ViewBag.Erro = r.afr_Mensagem;
