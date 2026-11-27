@@ -183,9 +183,12 @@ namespace PlataformaCursosWeb.Models
         [Display(Name = "Carga horária (horas)")]
         public int afr_CargaHoraria { get; set; } = 20;
 
-        [Range(1, 100, ErrorMessage = "O mínimo para concluir vai de 1% a 100%.")]
-        [Display(Name = "Mínimo para concluir (%)")]
+        // A API considera o curso concluido com todas as aulas
         public int afr_PercentualMinimo { get; set; } = 100;
+
+        // Professor responsavel. O admin escolhe; vazio = sem professor.
+        [Display(Name = "Professor")]
+        public int? afr_ProfessorId { get; set; }
 
         [Display(Name = "Curso ativo (visível para o aluno)")]
         public bool afr_Ativo { get; set; } = true;

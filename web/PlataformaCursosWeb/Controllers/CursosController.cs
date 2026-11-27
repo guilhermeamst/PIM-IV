@@ -78,8 +78,19 @@ namespace PlataformaCursosWeb.Controllers
         public IActionResult Novo()
         {
             ViewBag.Titulo = "Novo curso";
+            PrepararProfessores();
 
             return View("Form", new CursoViewModel());
+        }
+
+        // A lista de professores so aparece para o admin. O professor
+        // cria curso sempre para si mesmo.
+        private void PrepararProfessores()
+        {
+            ViewBag.EhAdmin = EhAdministrador();
+            ViewBag.Professores = EhAdministrador()
+                ? afr_cursoService.ListarProfessores()
+                : new List<Usuario>();
         }
 
         // =============================================================
@@ -106,10 +117,12 @@ namespace PlataformaCursosWeb.Controllers
             afr_dados.afr_Descricao = afr_curso.afr_Descricao;
             afr_dados.afr_CargaHoraria = afr_curso.afr_CargaHoraria;
             afr_dados.afr_PercentualMinimo = afr_curso.afr_PercentualMinimo;
+            afr_dados.afr_ProfessorId = afr_curso.afr_ProfessorId;
             afr_dados.afr_Ativo = afr_curso.afr_Ativo;
 
             ViewBag.Titulo = "Editar o curso Id " + afr_curso.afr_Id;
             ViewBag.TotalAulas = afr_curso.afr_TotalAulas;
+            PrepararProfessores();
 
             return View("Form", afr_dados);
         }
@@ -128,6 +141,7 @@ namespace PlataformaCursosWeb.Controllers
                 ViewBag.Titulo = afr_dados.EhEdicao()
                                ? "Editar o curso Id " + afr_dados.afr_Id
                                : "Novo curso";
+                PrepararProfessores();
 
                 return View("Form", afr_dados);
             }
@@ -138,7 +152,8 @@ namespace PlataformaCursosWeb.Controllers
             afr_curso.afr_Titulo = afr_dados.afr_Titulo.Trim();
             afr_curso.afr_Descricao = (afr_dados.afr_Descricao ?? "").Trim();
             afr_curso.afr_CargaHoraria = afr_dados.afr_CargaHoraria;
-            afr_curso.afr_PercentualMinimo = afr_dados.afr_PercentualMinimo;
+            afr_curso.afr_PercentualMinimo = 100;
+            afr_curso.afr_ProfessorId = afr_dados.afr_ProfessorId;
             afr_curso.afr_Ativo = afr_dados.afr_Ativo;
 
             string afr_mensagem;
@@ -162,6 +177,7 @@ namespace PlataformaCursosWeb.Controllers
                 ViewBag.Titulo = afr_dados.EhEdicao()
                                ? "Editar o curso Id " + afr_dados.afr_Id
                                : "Novo curso";
+                PrepararProfessores();
 
                 return View("Form", afr_dados);
             }

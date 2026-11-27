@@ -291,6 +291,25 @@ namespace PlataformaCursosWeb.Services
             afr_resultado.afr_DadosDetalhados.Add(
                 "O progresso, o XP e as medalhas dele serão apagados");
 
+            // O curso do professor NAO e apagado: fica sem professor ate
+            // o administrador escolher outro na tela de cursos.
+            if (afr_alvo.afr_Perfil == Usuario.PERFIL_PROFESSOR)
+            {
+                int afr_cursos = 0;
+
+                foreach (Curso afr_curso in afr_ponte.ListarCursos(""))
+                {
+                    if (afr_curso.afr_ProfessorId == afr_id)
+                    {
+                        afr_cursos++;
+                    }
+                }
+
+                afr_resultado.afr_DadosDetalhados.Add(
+                    "Cursos dele: " + afr_cursos + ". Eles NÃO são apagados: ficam sem " +
+                    "professor até o administrador escolher outro.");
+            }
+
             return afr_resultado;
         }
 
@@ -357,6 +376,12 @@ namespace PlataformaCursosWeb.Services
         {
             this.afr_sessao = afr_sessaoAtual;
             this.afr_ponte = afr_ponteApi;
+        }
+
+        // O admin escolhe o professor responsavel por cada curso
+        public List<Usuario> ListarProfessores()
+        {
+            return afr_ponte.ListarProfessores();
         }
 
         // DS09 e DS10 - quem pode mexer em curso e o PROFESSOR (e o admin)

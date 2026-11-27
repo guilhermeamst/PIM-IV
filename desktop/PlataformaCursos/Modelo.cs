@@ -185,6 +185,21 @@ namespace PlataformaCursos
 
         public int afr_TotalAulas { get; set; }
 
+        // Professor responsavel. Sem professor (null) quando o professor
+        // foi excluido: o curso fica, e o admin escolhe outro.
+        public int? afr_ProfessorId { get; set; }
+        public string afr_ProfessorNome { get; set; } = "";
+
+        public string ObterNomeProfessor()
+        {
+            if (afr_ProfessorId == null || string.IsNullOrWhiteSpace(afr_ProfessorNome))
+            {
+                return "Sem professor";
+            }
+
+            return afr_ProfessorNome;
+        }
+
         public Curso()
         {
         }

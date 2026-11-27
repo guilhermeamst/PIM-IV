@@ -366,7 +366,8 @@ namespace PlataformaCursos
         }
 
         public RespostaApi CriarCurso(string afr_titulo, string afr_descricao,
-                                      int afr_cargaHoraria, bool afr_ativo)
+                                      int afr_cargaHoraria, bool afr_ativo,
+                                      int? afr_professorId)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
@@ -374,13 +375,14 @@ namespace PlataformaCursos
             afr_corpo["descricao"] = afr_descricao ?? "";
             afr_corpo["cargaHoraria"] = afr_cargaHoraria;
             afr_corpo["ativo"] = afr_ativo;
+            afr_corpo["professorId"] = afr_professorId;
 
             return Chamar(HttpMethod.Post, "/api/admin/cursos", afr_corpo);
         }
 
         public RespostaApi AlterarCurso(int afr_cursoId, string afr_titulo,
                                         string afr_descricao, int afr_cargaHoraria,
-                                        bool afr_ativo)
+                                        bool afr_ativo, int? afr_professorId)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
@@ -388,6 +390,7 @@ namespace PlataformaCursos
             afr_corpo["descricao"] = afr_descricao ?? "";
             afr_corpo["cargaHoraria"] = afr_cargaHoraria;
             afr_corpo["ativo"] = afr_ativo;
+            afr_corpo["professorId"] = afr_professorId;
 
             return Chamar(HttpMethod.Put, "/api/admin/cursos/" + afr_cursoId, afr_corpo);
         }
@@ -754,6 +757,12 @@ namespace PlataformaCursos
         [JsonPropertyName("totalAulas")]
         public int afr_TotalAulas { get; set; }
 
+        [JsonPropertyName("professorId")]
+        public int? afr_ProfessorId { get; set; }
+
+        [JsonPropertyName("professorNome")]
+        public string afr_ProfessorNome { get; set; } = "";
+
         public Curso ParaCurso()
         {
             Curso afr_curso = new Curso();
@@ -764,6 +773,8 @@ namespace PlataformaCursos
             afr_curso.afr_CargaHoraria = afr_CargaHoraria;
             afr_curso.afr_Ativo = afr_Ativo;
             afr_curso.afr_TotalAulas = afr_TotalAulas;
+            afr_curso.afr_ProfessorId = afr_ProfessorId;
+            afr_curso.afr_ProfessorNome = afr_ProfessorNome ?? "";
 
             return afr_curso;
         }

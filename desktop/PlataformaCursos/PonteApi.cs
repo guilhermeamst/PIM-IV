@@ -218,6 +218,25 @@ namespace PlataformaCursos
         }
 
         // -------------------------------------------------------------
+        // Professores ativos, para o admin escolher o responsavel por
+        // um curso (rota de usuarios do admin, filtrada aqui).
+        // -------------------------------------------------------------
+        public List<Usuario> ListarProfessores()
+        {
+            List<Usuario> afr_lista = new List<Usuario>();
+
+            foreach (Usuario afr_usuario in ListarUsuarios(""))
+            {
+                if (afr_usuario.afr_Perfil == Usuario.PERFIL_PROFESSOR && afr_usuario.afr_Ativo)
+                {
+                    afr_lista.Add(afr_usuario);
+                }
+            }
+
+            return afr_lista;
+        }
+
+        // -------------------------------------------------------------
         // Os alunos que o professor acompanha.
         //
         // A lista de usuarios e adminOnly, entao professor nao pode usa-
@@ -372,6 +391,13 @@ namespace PlataformaCursos
                 Curso afr_curso = afr_item.ParaCurso();
                 afr_curso.afr_PercentualMinimo = 100;
 
+                // A rota do professor so traz os cursos dele, sem o nome
+                if (Sessao.EhProfessor())
+                {
+                    afr_curso.afr_ProfessorId = Sessao.ObterUsuarioId();
+                    afr_curso.afr_ProfessorNome = Sessao.ObterUsuario().afr_Nome;
+                }
+
                 bool afr_combina = afr_busca == "" ||
                                    afr_curso.afr_Titulo.ToLowerInvariant().Contains(afr_busca) ||
                                    afr_curso.afr_Descricao.ToLowerInvariant().Contains(afr_busca);
@@ -420,7 +446,8 @@ namespace PlataformaCursos
         {
             RespostaApi afr_resposta = Sessao.EhAdministrador()
                 ? Cliente().CriarCurso(afr_curso.afr_Titulo, afr_curso.afr_Descricao,
-                                       afr_curso.afr_CargaHoraria, afr_curso.afr_Ativo)
+                                       afr_curso.afr_CargaHoraria, afr_curso.afr_Ativo,
+                                       afr_curso.afr_ProfessorId)
                 : Cliente().CriarCursoProfessor(afr_curso.afr_Titulo, afr_curso.afr_Descricao,
                                                 afr_curso.afr_CargaHoraria);
 
@@ -433,7 +460,7 @@ namespace PlataformaCursos
             RespostaApi afr_resposta = Sessao.EhAdministrador()
                 ? Cliente().AlterarCurso(afr_curso.afr_Id, afr_curso.afr_Titulo,
                                          afr_curso.afr_Descricao, afr_curso.afr_CargaHoraria,
-                                         afr_curso.afr_Ativo)
+                                         afr_curso.afr_Ativo, afr_curso.afr_ProfessorId)
                 : Cliente().AlterarCursoProfessor(afr_curso.afr_Id, afr_curso.afr_Titulo,
                                                   afr_curso.afr_Descricao,
                                                   afr_curso.afr_CargaHoraria);

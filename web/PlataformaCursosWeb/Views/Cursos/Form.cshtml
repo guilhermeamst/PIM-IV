@@ -4,10 +4,10 @@
     os dois: Id zero significa novo, Id maior que zero significa edicao.
     E a mesma ideia do afr_idSelecionado do FrmCursos no desktop.
 
-    NOVO NESTA VERSAO: o campo "Minimo para concluir", que e o
-    PercentualMinimo do curso. Veio do DS08, que fala em
-    obterRequisitosCurso(curso) e resultadoConclusao(status, percentual)
-    em vez de um simples "concluiu tudo".
+    PROFESSOR DO CURSO: o curso fica ligado a quem o criou. O admin
+    escolhe (ou troca) o professor; quando um professor e excluido, o
+    curso continua e aparece como "Sem professor" ate o admin escolher
+    outro.
     =====================================================================
 *@
 @model CursoViewModel
@@ -62,20 +62,43 @@
                 <input asp-for="afr_CargaHoraria" type="number" min="1" max="1000" />
             </div>
 
+            @* Travado em 100%: a API conclui o curso com todas as aulas *@
             <div class="campo campo-estreito">
-                <label asp-for="afr_PercentualMinimo">Mínimo (%)</label>
-                <input asp-for="afr_PercentualMinimo" type="number" min="1" max="100" />
+                <label for="afr_minimo">Mínimo (%)</label>
+                <input id="afr_minimo" type="number" value="100" disabled />
             </div>
+
+            @if (ViewBag.EhAdmin == true)
+            {
+                <div class="campo">
+                    <label asp-for="afr_ProfessorId">Professor</label>
+                    <select asp-for="afr_ProfessorId">
+                        <option value="">(Sem professor)</option>
+                        @foreach (Usuario afr_professor in (List<Usuario>)ViewBag.Professores)
+                        {
+                            <option value="@afr_professor.afr_Id">@afr_professor.afr_Nome</option>
+                        }
+                    </select>
+                </div>
+            }
         </div>
 
         <span asp-validation-for="afr_CargaHoraria" class="erro-validacao"></span>
-        <span asp-validation-for="afr_PercentualMinimo" class="erro-validacao"></span>
 
-        <div class="ajuda" style="margin-top:8px;">
-            <strong>Mínimo para concluir:</strong> percentual das aulas que o
-            aluno precisa concluir para o curso contar como concluído. 100 exige
-            todas as aulas; 75 exige três quartos delas.
-        </div>
+        @if (ViewBag.EhAdmin == true)
+        {
+            <div class="ajuda" style="margin-top:8px;">
+                <strong>Professor:</strong> quem cuida do curso e das aulas. Se o
+                professor for excluído, o curso continua e fica sem professor até
+                você escolher outro aqui.
+            </div>
+        }
+        else
+        {
+            <div class="ajuda" style="margin-top:8px;">
+                Você será o professor responsável por este curso.
+            </div>
+        }
 
         <div class="campo campo-inline" style="margin-top:16px;">
             <input asp-for="afr_Ativo" type="checkbox" />
