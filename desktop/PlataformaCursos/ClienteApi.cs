@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - Trabalho em grupo
    Arquivo...: ClienteApi.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    VERSAO 3.1 - reescrito a partir do CODIGO da API, nao de suposicao
 
@@ -27,16 +26,10 @@
    responde. As rotas de curso e de administracao que funcionam sao as
    escritas direto no server.js. Nada aqui chama rota nao montada.
 
-   VERSAO 5 - APONTA PARA A NOSSA API
-   O grupo combinou que cada projeto tem a sua API, as duas no mesmo
-   banco do Azure. A do desktop e da web esta em Api/PlataformaCursosApi:
-   mesmas rotas e formatos da API do Gui (por isso este cliente nao
-   precisou mudar) e algumas rotas a mais, marcadas "VERSAO 5" abaixo.
-
-   COMO ESTA HOJE
-   DESLIGADO por padrao (Api:Ativa = false). Os programas continuam
-   lendo e gravando no SQL Server. Este arquivo e o caminho pronto para
-   quando o grupo decidir virar a chave.
+   VERSAO 6 - A API UNICA DO GRUPO
+   O desktop, a web e o aplicativo usam a mesma API, unificada pelo
+   Guilherme e hospedada no Render. Nao ha mais banco local: este
+   cliente e o unico caminho para os dados.
    ===================================================================== */
 
 using System;
@@ -50,38 +43,17 @@ using System.Text.Json.Serialization;
 namespace PlataformaCursos
 {
     // =================================================================
-    // ConfiguracaoApi - a CHAVE DE LIGA/DESLIGA da integracao
+    // ConfiguracaoApi - o endereco da API
     //
-    // O desktop guarda configuracao em constantes (a lista
-    // afr_SERVIDORES do BancoService segue o mesmo padrao), entao a
-    // configuracao da API fica aqui, no mesmo estilo.
+    // O desktop nao tem banco proprio: todos os dados vem da API do
+    // grupo, a mesma do aplicativo e da web.
+    //
+    //   API_URL ..... endereco da API (variavel de ambiente, opcional).
+    //                 Sem ela, vale o endereco hospedado no Render.
     // =================================================================
     public static class ConfiguracaoApi
     {
-        // -------------------------------------------------------------
-        // VERSAO 6 - QUEM LIGA A API E O PERFIL DE INICIALIZACAO
-        //
-        // Antes era uma constante: para testar com a API era preciso
-        // mudar o codigo, e um commit esquecido ligaria a API para o
-        // grupo inteiro. Agora o valor vem de uma variavel de ambiente
-        // que so o perfil "API (Azure)" define (Properties/
-        // launchSettings.json). Rodando pelo perfil normal, ou fora do
-        // Visual Studio, a API fica desligada e o programa usa o banco
-        // local. Nada para editar, nada para lembrar de desfazer.
-        //
-        //   API_ATIVA = true ............. liga a API
-        //   API_URL = http://...:3000 .... endereco (padrao: localhost:3000)
-        // -------------------------------------------------------------
-        public static readonly bool ATIVA = LerAtiva();
-
         public static readonly string URL_BASE = LerUrl();
-
-        private static bool LerAtiva()
-        {
-            string afr_valor = Environment.GetEnvironmentVariable("API_ATIVA") ?? "true";
-
-            return afr_valor.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
-        }
 
         private static string LerUrl()
         {
@@ -106,12 +78,7 @@ namespace PlataformaCursos
 
         public static string ObterDescricao()
         {
-            if (!ATIVA)
-            {
-                return "Modo SQL Server (API desligada).";
-            }
-
-            return "Modo API: " + URL_BASE;
+            return "API: " + URL_BASE;
         }
     }
 
@@ -258,11 +225,10 @@ namespace PlataformaCursos
             return Chamar(HttpMethod.Post, "/api/auth/primeiro-acesso", new Dictionary<string,string> { ["tokenPrimeiroAcesso"]=token, ["senhaTemporaria"]=temporaria, ["novaSenha"]=nova });
         }
 
-        public RespostaApi RecuperarSenha(string afr_email, string codigo = "", string novaSenha = "")
+        public RespostaApi RecuperarSenha(string afr_email, string codigo, string novaSenha)
         {
             Dictionary<string, string> afr_corpo = new Dictionary<string, string>();
             afr_corpo["email"] = (afr_email ?? "").Trim().ToLowerInvariant();
-
             afr_corpo["codigoRecuperacao"] = codigo;
             afr_corpo["novaSenha"] = novaSenha;
             return Chamar(HttpMethod.Post, "/api/auth/recover", afr_corpo);
@@ -510,7 +476,7 @@ namespace PlataformaCursos
         }
 
         // -------------------------------------------------------------
-        // VERSAO 5 - rotas que so a NOSSA API tem (Api/PlataformaCursosApi)
+        // VERSAO 5 - rotas a mais da API do grupo
         //
         // A API do grupo e propria do desktop e da web, com as mesmas
         // rotas e regras da API do Gui, mais estas, que as telas daqui
@@ -626,7 +592,7 @@ namespace PlataformaCursos
                 if (afr_resposta.afr_CodigoHttp == 401)
                 {
                     EsquecerToken();
-                    afr_resposta.afr_Mensagem = "Sessao expirada. Entre novamente.";
+                    afr_resposta.afr_Mensagem = "Sessão expirada. Entre novamente.";
                     return afr_resposta;
                 }
 
@@ -638,17 +604,17 @@ namespace PlataformaCursos
                     if (afr_resposta.afr_CodigoHttp == 403)
                     {
                         afr_resposta.afr_Mensagem =
-                            "Seu perfil nao tem permissao para esta operacao.";
+                            "Seu perfil não tem permissão para esta operação.";
                     }
                     else if (afr_resposta.afr_CodigoHttp == 501)
                     {
                         afr_resposta.afr_Mensagem =
-                            "Esta operacao ainda nao existe na API.";
+                            "Esta operação ainda não existe na API.";
                     }
                     else if (!afr_resposta.afr_Ok)
                     {
                         afr_resposta.afr_Mensagem =
-                            "A API respondeu com o codigo " + afr_resposta.afr_CodigoHttp + ".";
+                            "A API respondeu com o código " + afr_resposta.afr_CodigoHttp + ".";
                     }
                 }
 
@@ -659,7 +625,7 @@ namespace PlataformaCursos
                 // API fora do ar, URL errada, sem rede. Nunca deixa a
                 // excecao subir ate a tela: vira mensagem.
                 afr_resposta.afr_Ok = false;
-                afr_resposta.afr_Mensagem = "Nao foi possivel falar com a API: " +
+                afr_resposta.afr_Mensagem = "Não foi possível falar com a API: " +
                                             afr_erro.Message;
                 return afr_resposta;
             }
@@ -816,7 +782,7 @@ namespace PlataformaCursos
         public int afr_Concluidas { get; set; }
 
         // Passou a vir no corpo quando a matricula virou explicita.
-        // Diz se o aluno logado ja esta matriculado neste curso.
+        // Diz se o aluno logado ja está matriculado neste curso.
         [JsonPropertyName("matriculado")]
         public bool afr_Matriculado { get; set; }
     }

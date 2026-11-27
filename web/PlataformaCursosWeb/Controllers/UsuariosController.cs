@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
    Arquivo...: Controllers/UsuariosController.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    CRUD DE USUARIOS, equivalente ao FrmUsuarios do desktop.
 
@@ -38,21 +37,17 @@ namespace PlataformaCursosWeb.Controllers
         private readonly UsuarioService afr_usuarioService;
         private readonly LogService afr_logService;
         private readonly AutenticacaoService afr_autenticacaoService;
-        private readonly BancoService afr_bancoService;
-
-        // VERSAO 4 - no modo API a conexao testada e descrita e a da API
+        // A conexao testada e descrita e a da API do grupo
         private readonly PonteApi afr_ponte;
 
         public UsuariosController(UsuarioService afr_usuario,
                                   LogService afr_log,
                                   AutenticacaoService afr_autenticacao,
-                                  BancoService afr_banco,
                                   PonteApi afr_ponteApi)
         {
             afr_usuarioService = afr_usuario;
             afr_logService = afr_log;
             afr_autenticacaoService = afr_autenticacao;
-            afr_bancoService = afr_banco;
             afr_ponte = afr_ponteApi;
         }
 
@@ -62,7 +57,7 @@ namespace PlataformaCursosWeb.Controllers
         public IActionResult Index(string termo)
         {
             ViewBag.Termo = (termo ?? "").Trim();
-            ViewBag.StatusBanco = (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+            ViewBag.StatusBanco = afr_ponte.ObterDescricao();
 
             // Para a lista marcar "(voce)" e esconder o botao de excluir
             // da propria conta
@@ -91,7 +86,7 @@ namespace PlataformaCursosWeb.Controllers
                 }
             }
 
-            ViewBag.Resumo = afr_usuarios.Count + " usuario(s): "
+            ViewBag.Resumo = afr_usuarios.Count + " usuário(s): "
                            + afr_admins + " admin, "
                            + afr_professores + " professor, "
                            + afr_alunos + " aluno.";
@@ -105,7 +100,7 @@ namespace PlataformaCursosWeb.Controllers
         [HttpGet]
         public IActionResult Novo()
         {
-            ViewBag.Titulo = "Novo usuario";
+            ViewBag.Titulo = "Novo usuário";
 
             return View("Form", new UsuarioViewModel());
         }
@@ -123,7 +118,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_usuario == null)
             {
-                AvisarErro("Usuario nao encontrado.");
+                AvisarErro("Usuário não encontrado.");
                 return RedirectToAction("Index");
             }
 
@@ -143,7 +138,7 @@ namespace PlataformaCursosWeb.Controllers
             afr_dados.afr_Ativo = afr_usuario.afr_Ativo;
             afr_dados.afr_DataCadastro = afr_usuario.afr_DataCadastro;
 
-            ViewBag.Titulo = "Editar o usuario Id " + afr_usuario.afr_Id;
+            ViewBag.Titulo = "Editar o usuário Id " + afr_usuario.afr_Id;
 
             return View("Form", afr_dados);
         }
@@ -160,8 +155,8 @@ namespace PlataformaCursosWeb.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Titulo = afr_dados.EhEdicao()
-                               ? "Editar o usuario Id " + afr_dados.afr_Id
-                               : "Novo usuario";
+                               ? "Editar o usuário Id " + afr_dados.afr_Id
+                               : "Novo usuário";
 
                 return View("Form", afr_dados);
             }
@@ -172,11 +167,11 @@ namespace PlataformaCursosWeb.Controllers
             if (afr_usuarioService.VerificarDuplicidade(afr_dados.afr_Email, afr_dados.afr_Id))
             {
                 ModelState.AddModelError("afr_Email",
-                    "Este email ja esta cadastrado para outro usuario.");
+                    "Este email já está cadastrado para outro usuário.");
 
                 ViewBag.Titulo = afr_dados.EhEdicao()
-                               ? "Editar o usuario Id " + afr_dados.afr_Id
-                               : "Novo usuario";
+                               ? "Editar o usuário Id " + afr_dados.afr_Id
+                               : "Novo usuário";
 
                 return View("Form", afr_dados);
             }
@@ -209,8 +204,8 @@ namespace PlataformaCursosWeb.Controllers
             {
                 ViewBag.Erro = afr_mensagem;
                 ViewBag.Titulo = afr_dados.EhEdicao()
-                               ? "Editar o usuario Id " + afr_dados.afr_Id
-                               : "Novo usuario";
+                               ? "Editar o usuário Id " + afr_dados.afr_Id
+                               : "Novo usuário";
 
                 return View("Form", afr_dados);
             }
@@ -256,7 +251,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_usuario == null)
             {
-                AvisarErro("Usuario nao encontrado.");
+                AvisarErro("Usuário não encontrado.");
                 return RedirectToAction("Index");
             }
 
@@ -285,7 +280,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_usuario == null)
             {
-                AvisarErro("Usuario nao encontrado.");
+                AvisarErro("Usuário não encontrado.");
                 return RedirectToAction("Index");
             }
 

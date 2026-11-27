@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
    Arquivo...: Services/PonteApi.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    VERSAO 4 - a ponte entre os servicos e a API Node.js
 
@@ -17,23 +16,14 @@
    telas e os servicos continuam iguais: so o lugar de onde vem o dado
    muda.
 
-   QUANDO E USADA
-   So com a API ligada (Api:Ativa = true no appsettings.json). Com ela
-   desligada o programa usa o banco local, como antes - o modo de
-   testes combinado pelo grupo enquanto a API nao estiver no Azure.
-
-   VERSAO 5 - A API E A NOSSA (Api/PlataformaCursosApi)
-   Cada projeto do grupo tem a sua API, e as duas gravam no mesmo banco
-   do Azure. A nossa segue as rotas e as regras da API do Gui e tem
-   rotas a mais para as telas daqui (editar e excluir usuario, editar
-   aula, progresso e XP de um aluno).
+   O SITE SO FALA COM A API
+   Nao existe mais banco local. A API e a do grupo, unificada pelo
+   Guilherme e hospedada no Render (endereco em Api:UrlBase, no
+   appsettings.json); o aplicativo e o desktop usam a mesma.
 
    O QUE AINDA NAO DA
-   Historico de acoes, recuperacao de senha e o texto da aula precisam
-   de tabelas que o banco do Azure nao tem. Combinar com o grupo antes
-   de criar: o banco e compartilhado. Ate la, essas telas avisam em vez
-   de cair escondido no banco local - metade no banco e metade na API e
-   justamente o que o grupo quis evitar.
+   Historico de acoes: a API nao tem a rota. A tela de perfil mostra as
+   listas vazias ate a rota existir.
    ===================================================================== */
 
 using System;
@@ -55,11 +45,6 @@ namespace PlataformaCursosWeb.Services
         {
             this.afr_configuracao = afr_config;
             this.afr_sessao = afr_sessaoAtual;
-        }
-
-        public bool Ativa()
-        {
-            return afr_configuracao.EstaAtiva();
         }
 
         public string ObterDescricao()
@@ -104,7 +89,7 @@ namespace PlataformaCursosWeb.Services
             // Com resposta, e a API dizendo que o banco nao respondeu.
             afr_mensagem = afr_resposta.afr_CodigoHttp == 0
                 ? afr_resposta.afr_Mensagem
-                : "A API respondeu, mas o banco nao: " + afr_resposta.afr_Mensagem;
+                : "A API respondeu, mas o banco não: " + afr_resposta.afr_Mensagem;
             return false;
         }
 
@@ -129,7 +114,7 @@ namespace PlataformaCursosWeb.Services
 
                 // Se a API respondeu mas o banco nao (firewall do Azure,
                 // por exemplo), esperar nao adianta
-                if (!afr_mensagem.Contains("Nao foi possivel falar com a API") ||
+                if (!afr_mensagem.Contains("Não foi possível falar com a API") ||
                     DateTime.Now >= afr_limite)
                 {
                     return false;
@@ -190,24 +175,11 @@ namespace PlataformaCursosWeb.Services
             return afr_usuario != null;
         }
 
-        // POST /api/auth/recover - hoje sempre 501
         public RespostaApi LoginPublico(string email, string senha) => afr_configuracao.CriarCliente().Entrar(email, senha);
         public RespostaApi Registrar(string nome, string email, string senha, string confirmarSenha) => afr_configuracao.CriarCliente().Registrar(nome, email, senha, confirmarSenha);
         public RespostaApi PrimeiroAcesso(string token, string temporaria, string nova) => afr_configuracao.CriarCliente().PrimeiroAcesso(token, temporaria, nova);
         public RespostaApi RecuperarComCodigo(string email, string codigo, string senha) => Cliente().RecuperarSenha(email, codigo, senha);
 
-        public string RecuperarSenha(string afr_email)
-        {
-            RespostaApi afr_resposta = Cliente().RecuperarSenha(afr_email);
-
-            if (afr_resposta.afr_CodigoHttp == 501)
-            {
-                return "A recuperacao de senha ainda nao existe na API. " +
-                       "Procure o administrador para trocar a senha.";
-            }
-
-            return afr_resposta.afr_Mensagem;
-        }
 
         // =============================================================
         // USUARIOS
@@ -321,7 +293,7 @@ namespace PlataformaCursosWeb.Services
                 afr_usuario.afr_Nome, afr_usuario.afr_Email,
                 afr_usuario.afr_Senha, afr_usuario.afr_Perfil);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario cadastrado. Informe a senha temporaria ao usuario." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário cadastrado. Informe a senha temporária ao usuário." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -334,7 +306,7 @@ namespace PlataformaCursosWeb.Services
                 afr_usuario.afr_Id, afr_usuario.afr_Nome, afr_usuario.afr_Email,
                 afr_usuario.afr_Senha, afr_usuario.afr_Perfil, afr_usuario.afr_Ativo);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario atualizado." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário atualizado." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -343,7 +315,7 @@ namespace PlataformaCursosWeb.Services
         {
             RespostaApi afr_resposta = Cliente().ExcluirUsuario(afr_id);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario excluido." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário excluído." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -470,13 +442,13 @@ namespace PlataformaCursosWeb.Services
         {
             if (!afr_sessao.EhAdministrador())
             {
-                afr_mensagem = "Na API, so o administrador exclui curso.";
+                afr_mensagem = "Na API, só o administrador exclui curso.";
                 return false;
             }
 
             RespostaApi afr_resposta = Cliente().ExcluirCurso(afr_cursoId);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Curso excluido." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Curso excluído." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -515,7 +487,22 @@ namespace PlataformaCursosWeb.Services
 
             foreach (AulaApi afr_item in afr_detalhe.afr_Aulas)
             {
-                afr_lista.Add(afr_item.ParaAula(afr_cursoId));
+                Aula afr_aula = afr_item.ParaAula(afr_cursoId);
+
+                // A rota do curso nao manda o TEXTO das aulas. Para quem
+                // gerencia (professor e admin), o texto vem da rota de cada
+                // aula - sem isso toda aula pareceria "sem conteudo".
+                if (afr_item.Conteudo == null && !(!afr_sessao.EhAdministrador() && !afr_sessao.EhProfessor()))
+                {
+                    Aula afr_completa = AbrirAula(afr_aula.afr_Id);
+
+                    if (afr_completa != null)
+                    {
+                        afr_aula.afr_Conteudo = afr_completa.afr_Conteudo;
+                    }
+                }
+
+                afr_lista.Add(afr_aula);
             }
 
             return afr_lista;
@@ -556,7 +543,7 @@ namespace PlataformaCursosWeb.Services
                 : Cliente().CriarAulaProfessor(afr_aula.afr_CursoId, afr_aula.afr_Titulo,
                                                afr_aula.afr_DuracaoMin, afr_aula.afr_Conteudo);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Aula incluida." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Aula incluída." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -566,7 +553,7 @@ namespace PlataformaCursosWeb.Services
                 ? Cliente().ExcluirAula(afr_aulaId)
                 : Cliente().ExcluirAulaProfessor(afr_aulaId);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Aula excluida." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Aula excluída." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -601,7 +588,7 @@ namespace PlataformaCursosWeb.Services
                 afr_ganho = afr_corpo.afr_Gamificacao.ParaGanho();
             }
 
-            afr_mensagem = afr_concluida ? "Aula concluida." : "Aula desmarcada.";
+            afr_mensagem = afr_concluida ? "Aula concluída." : "Aula desmarcada.";
             return true;
         }
 
@@ -726,9 +713,9 @@ namespace PlataformaCursosWeb.Services
             return afr_lista;
         }
 
-        // A mesma conta do BancoService.MontarResultado, com o minimo
-        // fixo em 100 (ver ListarCursos)
-        private ResultadoConclusao MontarResultado(int afr_concluidas, int afr_total)
+        // Percentual e aprovacao de um curso, com o minimo fixo em 100
+        // (para a API, curso concluido e curso com todas as aulas feitas)
+        public static ResultadoConclusao MontarResultado(int afr_concluidas, int afr_total)
         {
             ResultadoConclusao afr_resultado = new ResultadoConclusao();
 

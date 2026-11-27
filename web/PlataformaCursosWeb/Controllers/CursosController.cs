@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
    Arquivo...: Controllers/CursosController.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    GERENCIAMENTO DE CURSOS E AULAS, equivalente ao FrmCursos do desktop.
 
@@ -37,21 +36,17 @@ namespace PlataformaCursosWeb.Controllers
         private readonly CursoService afr_cursoService;
         private readonly AulaService afr_aulaService;
         private readonly AutenticacaoService afr_autenticacaoService;
-        private readonly BancoService afr_bancoService;
-
-        // VERSAO 4 - no modo API a conexao testada e descrita e a da API
+        // A conexao testada e descrita e a da API do grupo
         private readonly PonteApi afr_ponte;
 
         public CursosController(CursoService afr_curso,
                                 AulaService afr_aula,
                                 AutenticacaoService afr_autenticacao,
-                                BancoService afr_banco,
                                 PonteApi afr_ponteApi)
         {
             afr_cursoService = afr_curso;
             afr_aulaService = afr_aula;
             afr_autenticacaoService = afr_autenticacao;
-            afr_bancoService = afr_banco;
             afr_ponte = afr_ponteApi;
         }
 
@@ -69,7 +64,7 @@ namespace PlataformaCursosWeb.Controllers
             afr_filtro.afr_UsuarioId = ObterUsuarioId();
 
             ViewBag.Termo = afr_filtro.afr_Termo;
-            ViewBag.StatusBanco = (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+            ViewBag.StatusBanco = afr_ponte.ObterDescricao();
 
             List<Curso> afr_cursos = afr_cursoService.LocalizarCurso(afr_filtro);
 
@@ -100,7 +95,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_curso == null)
             {
-                AvisarErro("Curso nao encontrado.");
+                AvisarErro("Curso não encontrado.");
                 return RedirectToAction("Index");
             }
 
@@ -190,7 +185,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_curso == null)
             {
-                AvisarErro("Curso nao encontrado.");
+                AvisarErro("Curso não encontrado.");
                 return RedirectToAction("Index");
             }
 
@@ -266,7 +261,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_curso == null)
             {
-                AvisarErro("Curso nao encontrado.");
+                AvisarErro("Curso não encontrado.");
                 return RedirectToAction("Index");
             }
 
@@ -296,7 +291,7 @@ namespace PlataformaCursosWeb.Controllers
             afr_aula.afr_DuracaoMin = duracao;
             afr_aula.afr_Conteudo = (conteudo ?? "").Trim();
 
-            // A ordem e calculada: entra sempre como a ultima aula
+            // A ordem é calculada: entra sempre como a ultima aula
             afr_aula.afr_Ordem = afr_aulaService.ProximaOrdem(cursoId);
 
             string afr_mensagem;
@@ -324,7 +319,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_aula == null)
             {
-                AvisarErro("Aula nao encontrada.");
+                AvisarErro("Aula não encontrada.");
                 return RedirectToAction("Index");
             }
 
@@ -360,7 +355,7 @@ namespace PlataformaCursosWeb.Controllers
 
             if (afr_aula == null)
             {
-                AvisarErro("Esta aula nao esta mais no banco.");
+                AvisarErro("Esta aula não está mais no banco.");
                 return RedirectToAction("Index");
             }
 

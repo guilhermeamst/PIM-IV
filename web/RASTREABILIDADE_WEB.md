@@ -1,7 +1,14 @@
 # Rastreabilidade: modelo do Astah × versão web
 
 **Trabalho em grupo — Plataforma de Cursos Online (ASP.NET Core MVC)**
-Modelo: `Modelagem/Projeto_UML.asta`
+Modelo: `Projeto_UML.asta`
+
+> **Atualização de 24/11/2026: o banco local saiu.** Os programas agora usam só a
+> API do grupo. Onde este mapa cita `BancoService`,
+> o passo hoje é feito pela API: o serviço chama a
+> `PonteApi`, que chama a rota correspondente (`ClienteApi.cs`). Os nomes dos serviços
+> e das mensagens do diagrama continuam os mesmos. A recuperação de senha (DS02) passou
+> a ser pelo **código de recuperação** que a API entrega ao criar a conta.
 
 Este documento liga **cada mensagem** dos 14 diagramas de sequência ao lugar que a
 implementa na versão web. É o irmão do `RASTREABILIDADE.md` do projeto desktop: os
@@ -67,29 +74,16 @@ pertence só àquele navegador.
 
 ## DS02 — Recuperar Senha
 
-A linha de vida **Email** do diagrama é o que faz a recuperação ter três etapas.
+A recuperação usa o **código pessoal de recuperação**, mostrado uma vez só quando a
+conta é criada (ou no primeiro acesso). Não há servidor de e-mail: o código é
+entregue na hora do cadastro.
 
-| Mensagem no diagrama | Onde está |
+| Passo | Onde está |
 |---|---|
-| `informarEmail(email)` | `Views/Conta/RecuperarSenha.cshtml`, etapa 1 |
-| `solicitarRecuperacao(email)` | `ContaController.EnviarCodigo` → `AutenticacaoService.SolicitarRecuperacao` |
-| `enviarCodigo(email)` | `EmailService.EnviarCodigo` |
-| `codigoEnviado()` | `BancoService.GravarCodigo` + retorno |
-| `exibirMensagem()` | a mesma view, agora na etapa 2 |
-| `recuperacaoConcluida()` | `ContaController.RedefinirSenha` → `AutenticacaoService.RedefinirSenha` |
-
-A etapa 2 (`AutenticacaoService.ConferirCodigo`) não aparece nomeada no diagrama,
-mas é o que torna o `enviarCodigo` útil: sem conferir o código, a senha trocaria
-sem ele.
-
-**A linha "Email", na prática:** o trabalho não tem servidor de e-mail, então a
-mensagem é gravada em `dados/emails.txt`. No desktop um botão abria esse arquivo no
-Bloco de Notas; na web o arquivo fica no **servidor**, e o navegador não abre
-arquivo de lá — por isso existe a página `ContaController.CaixaDeEntrada`, que lê o
-arquivo e mostra o conteúdo. Num sistema real essa página não existiria.
-
-O código tem 6 dígitos, vale 15 minutos (`MINUTOS_VALIDADE_CODIGO`) e é queimado em
-`BancoService.MarcarCodigoUsado` depois da troca.
+| informar email, código e nova senha | `Views/Conta/RecuperarSenha.cshtml` |
+| pedir a recuperação | `ContaController.RedefinirSenha` → `PonteApi.RecuperarComCodigo` → `POST /api/auth/recover` |
+| conferir o código e trocar a senha | API do grupo (código guardado em hash, 5 tentativas e bloqueio de 15 minutos) |
+| exibir a mensagem | a mesma view, com o **código novo**, que substitui o anterior |
 
 ---
 
