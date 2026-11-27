@@ -4,10 +4,10 @@
     os dois: Id zero significa novo, Id maior que zero significa edicao.
     E a mesma ideia do afr_idSelecionado do FrmCursos no desktop.
 
-    NOVO NESTA VERSAO: o campo "Minimo para concluir", que e o
-    PercentualMinimo do curso. Veio do DS08, que fala em
-    obterRequisitosCurso(curso) e resultadoConclusao(status, percentual)
-    em vez de um simples "concluiu tudo".
+    PROFESSOR DO CURSO: o curso fica ligado a quem o criou. O admin
+    escolhe (ou troca) o professor; quando um professor e excluido, o
+    curso continua e aparece como "Sem professor" ate o admin escolher
+    outro.
     =====================================================================
 *@
 @model CursoViewModel
@@ -25,7 +25,7 @@
 <p class="subtitulo">
     @if (afr_edicao)
     {
-        <text>Gravar vai executar um <strong>UPDATE</strong> no registro Id @Model.afr_Id.</text>
+        <text>Salvar envia as alterações do curso Id @Model.afr_Id para a API.</text>
 
         if (ViewBag.TotalAulas != null)
         {
@@ -34,7 +34,7 @@
     }
     else
     {
-        <text>Gravar vai executar um <strong>INSERT</strong> na tabela dbo.Cursos.</text>
+        <text>Salvar cadastra o curso pela API.</text>
     }
 </p>
 
@@ -45,13 +45,13 @@
         <input type="hidden" asp-for="afr_Id" />
 
         <div class="campo">
-            <label asp-for="afr_Titulo">Titulo</label>
+            <label asp-for="afr_Titulo">Título</label>
             <input asp-for="afr_Titulo" type="text" maxlength="120" />
             <span asp-validation-for="afr_Titulo" class="erro-validacao"></span>
         </div>
 
         <div class="campo">
-            <label asp-for="afr_Descricao">Descricao</label>
+            <label asp-for="afr_Descricao">Descrição</label>
             <textarea asp-for="afr_Descricao" maxlength="500"></textarea>
             <span asp-validation-for="afr_Descricao" class="erro-validacao"></span>
         </div>
@@ -62,29 +62,52 @@
                 <input asp-for="afr_CargaHoraria" type="number" min="1" max="1000" />
             </div>
 
+            @* Travado em 100%: a API conclui o curso com todas as aulas *@
             <div class="campo campo-estreito">
-                <label asp-for="afr_PercentualMinimo">Minimo (%)</label>
-                <input asp-for="afr_PercentualMinimo" type="number" min="1" max="100" />
+                <label for="afr_minimo">Mínimo (%)</label>
+                <input id="afr_minimo" type="number" value="100" disabled />
             </div>
+
+            @if (ViewBag.EhAdmin == true)
+            {
+                <div class="campo">
+                    <label asp-for="afr_ProfessorId">Professor</label>
+                    <select asp-for="afr_ProfessorId">
+                        <option value="">(Sem professor)</option>
+                        @foreach (Usuario afr_professor in (List<Usuario>)ViewBag.Professores)
+                        {
+                            <option value="@afr_professor.afr_Id">@afr_professor.afr_Nome</option>
+                        }
+                    </select>
+                </div>
+            }
         </div>
 
         <span asp-validation-for="afr_CargaHoraria" class="erro-validacao"></span>
-        <span asp-validation-for="afr_PercentualMinimo" class="erro-validacao"></span>
 
-        <div class="ajuda" style="margin-top:8px;">
-            <strong>Minimo para concluir:</strong> percentual das aulas que o
-            aluno precisa concluir para o curso contar como concluido. 100 exige
-            todas as aulas; 75 exige tres quartos delas.
-        </div>
+        @if (ViewBag.EhAdmin == true)
+        {
+            <div class="ajuda" style="margin-top:8px;">
+                <strong>Professor:</strong> quem cuida do curso e das aulas. Se o
+                professor for excluído, o curso continua e fica sem professor até
+                você escolher outro aqui.
+            </div>
+        }
+        else
+        {
+            <div class="ajuda" style="margin-top:8px;">
+                Você será o professor responsável por este curso.
+            </div>
+        }
 
         <div class="campo campo-inline" style="margin-top:16px;">
             <input asp-for="afr_Ativo" type="checkbox" />
-            <label asp-for="afr_Ativo">Curso ativo (visivel para o aluno)</label>
+            <label asp-for="afr_Ativo">Curso ativo (visível para o aluno)</label>
         </div>
 
         <div class="acoes">
             <button type="submit" class="botao botao-primario">
-                @(afr_edicao ? "Salvar alteracoes" : "Cadastrar curso")
+                @(afr_edicao ? "Salvar alterações" : "Cadastrar curso")
             </button>
 
             <a asp-controller="Cursos" asp-action="Index" class="botao">Cancelar</a>

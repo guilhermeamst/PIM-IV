@@ -5,7 +5,7 @@
    CASOS DE USO ATENDIDOS NESTA TELA:
    DC01 - Fazer Login          DC02 - Recuperar Senha (abre outra tela)
 
-   A tela nao conhece banco de dados: ela valida o que foi digitado e
+   A tela nao conhece a API diretamente: ela valida o que foi digitado e
    entrega para a classe AutenticacaoService decidir.
    ===================================================================== */
 
@@ -18,19 +18,17 @@ namespace PlataformaCursos
 {
     public partial class FrmLogin : Form
     {
-        private BancoService afr_bancoService = new BancoService();
 
         // VERSAO 4 - no modo API a conexao testada e descrita e a da API
         private PonteApi afr_ponte = new PonteApi();
         private AutenticacaoService afr_autenticacaoService = new AutenticacaoService();
 
         // =============================================================
-        // CONSTRUTOR - prepara o banco na primeira execucao
+        // CONSTRUTOR - confere se a API responde
         // =============================================================
         public FrmLogin()
         {
             InitializeComponent();
-            if (afr_ponte.Ativa())
             {
                 var cadastro = new LinkLabel { Text = "Criar conta", AutoSize = true, Location = new Point(270, 285) };
                 cadastro.LinkClicked += (sender, args) => Cadastrar();
@@ -39,20 +37,16 @@ namespace PlataformaCursos
 
             string afr_mensagem;
 
-            // VERSAO 4 - COM A API LIGADA, O PROGRAMA NAO TOCA EM BANCO
-            // NENHUM. PrepararBanco cria tabelas, roda ALTER TABLE/UPDATE
-            // de migracao e cadastra usuarios de teste: no banco do Azure,
-            // que o aplicativo ja usa, isso estragaria o esquema dele. No
-            // modo API o que se testa aqui e se a API responde.
-            bool afr_pronto = afr_ponte.Ativa()
-                ? afr_ponte.AguardarApi(15, out afr_mensagem)
-                : afr_bancoService.PrepararBanco(out afr_mensagem);
+            // O desktop nao tem banco proprio: aqui so se confere se a API
+            // do grupo responde (esperando alguns segundos, caso ela esteja
+            // acordando - o servidor gratuito do Render dorme quando parado)
+            bool afr_pronto = afr_ponte.AguardarApi(15, out afr_mensagem);
 
             if (afr_pronto)
             {
                 afr_lblStatus.ForeColor = Color.DimGray;
                 afr_lblStatus.Text = afr_mensagem + "  " +
-                                     (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+                                     afr_ponte.ObterDescricao();
 
                 // A tela abre vazia: como no aplicativo, quem entra ja sabe
                 // a propria conta. Nenhuma conta fica sugerida na tela.
@@ -63,7 +57,7 @@ namespace PlataformaCursos
                 afr_lblStatus.ForeColor = Color.Firebrick;
                 afr_lblStatus.Text = afr_mensagem;
 
-                MessageBox.Show(afr_mensagem, "Banco de dados",
+                MessageBox.Show(afr_mensagem, "Conexão",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -75,7 +69,6 @@ namespace PlataformaCursos
         {
             string afr_mensagem;
 
-            if (afr_ponte.Ativa())
             {
                 var cliente = ConfiguracaoApi.ObterCliente();
                 var resposta = cliente.Entrar(afr_txtEmail.Text, afr_txtSenha.Text);
@@ -88,7 +81,7 @@ namespace PlataformaCursos
                         if (campos == null) return;
                         if (campos[0] != campos[1])
                         {
-                            MessageBox.Show("As senhas nao conferem.");
+                            MessageBox.Show("As senhas não conferem.");
                             return;
                         }
                         var troca = cliente.PrimeiroAcesso(token.GetString(), afr_txtSenha.Text, campos[0]);
@@ -97,7 +90,7 @@ namespace PlataformaCursos
                             MessageBox.Show(troca.afr_Mensagem);
                             return;
                         }
-                        MessageBox.Show("Guarde seu codigo de recuperacao: " + troca.CodigoRecuperacao);
+                        MessageBox.Show("Guarde seu código de recuperação: " + troca.CodigoRecuperacao);
                         afr_txtSenha.Text = campos[0];
                     }
                 } else { MessageBox.Show(resposta.afr_Mensagem); return; }
@@ -130,7 +123,7 @@ namespace PlataformaCursos
             // Quando a tela principal fecha (logout), volta para o login limpo
             afr_txtSenha.Clear();
             afr_lblStatus.ForeColor = Color.DimGray;
-            afr_lblStatus.Text = "Sessao encerrada. Entre novamente para continuar.";
+            afr_lblStatus.Text = "Sessão encerrada. Entre novamente para continuar.";
 
             this.Show();
             afr_txtEmail.Focus();
@@ -141,7 +134,7 @@ namespace PlataformaCursos
             var campos = Solicitar("Criar conta de aluno", new[] { "Nome", "Email", "Senha", "Confirmar senha" }, new[] { false, false, true, true });
             if (campos == null) return;
             var resposta = ConfiguracaoApi.ObterCliente().CadastrarAluno(campos[0], campos[1], campos[2], campos[3]);
-            MessageBox.Show(resposta.afr_Ok ? "Conta criada. Guarde seu codigo de recuperacao: " + resposta.CodigoRecuperacao : resposta.afr_Mensagem);
+            MessageBox.Show(resposta.afr_Ok ? "Conta criada. Guarde seu código de recuperação: " + resposta.CodigoRecuperacao : resposta.afr_Mensagem);
             if (resposta.afr_Ok) afr_txtEmail.Text = campos[1];
         }
 

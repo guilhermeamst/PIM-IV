@@ -290,11 +290,22 @@ app.post('/api/auth/recover', async (req, res) => {
 app.use('/api/cursos', require('./routes/courseRoutes'));
 
 // ---------------- ADMIN: CURSOS ----------------
+// O admin pode escolher (ou trocar) o professor responsavel pelo curso.
+// professorId ausente = nao mexe; null = curso sem professor.
+async function lerProfessorDoCurso(pool, body) {
+  if (!body || !Object.prototype.hasOwnProperty.call(body, 'professorId')) return { informado: false };
+  if (body.professorId === null || body.professorId === '' || body.professorId === 0) return { informado: true, id: null };
+  const id = Number(body.professorId);
+  if (!Number.isSafeInteger(id) || id <= 0) return { erro: 'Professor invalido.' };
+  const r = await pool.request().input('id', sql.Int, id).query("SELECT Id FROM dbo.Usuarios WHERE Id=@id AND Perfil='PROFESSOR' AND Ativo=1");
+  if (!r.recordset.length) return { erro: 'Professor invalido ou inativo.' };
+  return { informado: true, id };
+}
 app.get('/api/admin/cursos', auth, adminOnly, async (req, res) => {
   const termo = (req.query.busca || '').trim();
   try {
     const pool = await getPool();
-    const result = await pool.request().input('termo', sql.NVarChar(200), termo).query(`SELECT c.Id AS id,c.Titulo AS titulo,c.Descricao AS descricao,c.CargaHoraria AS cargaHoraria,c.Ativo AS ativo,(SELECT COUNT(*) FROM dbo.Aulas a WHERE a.CursoId=c.Id) AS totalAulas FROM dbo.Cursos c WHERE @termo='' OR c.Titulo LIKE '%'+@termo+'%' OR c.Descricao LIKE '%'+@termo+'%' ORDER BY c.Titulo`);
+    const result = await pool.request().input('termo', sql.NVarChar(200), termo).query(`SELECT c.Id AS id,c.Titulo AS titulo,c.Descricao AS descricao,c.CargaHoraria AS cargaHoraria,c.Ativo AS ativo,(SELECT COUNT(*) FROM dbo.Aulas a WHERE a.CursoId=c.Id) AS totalAulas,c.ProfessorId AS professorId,p.Nome AS professorNome FROM dbo.Cursos c LEFT JOIN dbo.Usuarios p ON p.Id=c.ProfessorId WHERE @termo='' OR c.Titulo LIKE '%'+@termo+'%' OR c.Descricao LIKE '%'+@termo+'%' ORDER BY c.Titulo`);
     res.json(result.recordset);
   } catch (e) {
     res.status(500).json({
@@ -314,7 +325,11 @@ app.post('/api/admin/cursos', auth, adminOnly, async (req, res) => {
   });
   try {
     const pool = await getPool();
-    const r = await pool.request().input('titulo', sql.NVarChar(200), titulo).input('descricao', sql.NVarChar(sql.MAX), descricao || '').input('carga', sql.Int, Number(cargaHoraria) || 0).input('ativo', sql.Bit, Boolean(ativo)).query(`INSERT INTO dbo.Cursos(Titulo,Descricao,CargaHoraria,Ativo,DataCadastro) OUTPUT INSERTED.Id VALUES(@titulo,@descricao,@carga,@ativo,GETDATE())`);
+    const professor = await lerProfessorDoCurso(pool, req.body);
+    if (professor.erro) return res.status(400).json({
+      message: professor.erro
+    });
+    const r = await pool.request().input('titulo', sql.NVarChar(200), titulo).input('descricao', sql.NVarChar(sql.MAX), descricao || '').input('carga', sql.Int, Number(cargaHoraria) || 0).input('ativo', sql.Bit, Boolean(ativo)).input('professorId', sql.Int, professor.informado ? professor.id : null).query(`INSERT INTO dbo.Cursos(Titulo,Descricao,CargaHoraria,Ativo,DataCadastro,ProfessorId) OUTPUT INSERTED.Id VALUES(@titulo,@descricao,@carga,@ativo,GETDATE(),@professorId)`);
     res.status(201).json({
       id: r.recordset[0].Id,
       message: 'Curso criado.'
@@ -334,7 +349,11 @@ app.put('/api/admin/cursos/:id', auth, adminOnly, async (req, res) => {
   } = req.body;
   try {
     const pool = await getPool();
-    const r = await pool.request().input('id', sql.Int, Number(req.params.id)).input('titulo', sql.NVarChar(200), titulo).input('descricao', sql.NVarChar(sql.MAX), descricao || '').input('carga', sql.Int, Number(cargaHoraria) || 0).input('ativo', sql.Bit, Boolean(ativo)).query('UPDATE dbo.Cursos SET Titulo=@titulo,Descricao=@descricao,CargaHoraria=@carga,Ativo=@ativo WHERE Id=@id');
+    const professor = await lerProfessorDoCurso(pool, req.body);
+    if (professor.erro) return res.status(400).json({
+      message: professor.erro
+    });
+    const r = await pool.request().input('id', sql.Int, Number(req.params.id)).input('trocaProfessor', sql.Bit, professor.informado).input('professorId', sql.Int, professor.informado ? professor.id : null).input('titulo', sql.NVarChar(200), titulo).input('descricao', sql.NVarChar(sql.MAX), descricao || '').input('carga', sql.Int, Number(cargaHoraria) || 0).input('ativo', sql.Bit, Boolean(ativo)).query('UPDATE dbo.Cursos SET Titulo=@titulo,Descricao=@descricao,CargaHoraria=@carga,Ativo=@ativo,ProfessorId=CASE WHEN @trocaProfessor=1 THEN @professorId ELSE ProfessorId END WHERE Id=@id');
     if (!r.rowsAffected[0]) return res.status(404).json({
       message: 'Curso nao encontrado.'
     });

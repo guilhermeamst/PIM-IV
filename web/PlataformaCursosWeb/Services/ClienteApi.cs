@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - Trabalho em grupo
    Arquivo...: ClienteApi.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    VERSAO 3.1 - reescrito a partir do CODIGO da API, nao de suposicao
 
@@ -27,16 +26,10 @@
    responde. As rotas de curso e de administracao que funcionam sao as
    escritas direto no server.js. Nada aqui chama rota nao montada.
 
-   VERSAO 5 - APONTA PARA A NOSSA API
-   O grupo combinou que cada projeto tem a sua API, as duas no mesmo
-   banco do Azure. A do desktop e da web esta em Api/PlataformaCursosApi:
-   mesmas rotas e formatos da API do Gui (por isso este cliente nao
-   precisou mudar) e algumas rotas a mais, marcadas "VERSAO 5" abaixo.
-
-   COMO ESTA HOJE
-   DESLIGADO por padrao (Api:Ativa = false). Os programas continuam
-   lendo e gravando no SQL Server. Este arquivo e o caminho pronto para
-   quando o grupo decidir virar a chave.
+   VERSAO 6 - A API UNICA DO GRUPO
+   O desktop, a web e o aplicativo usam a mesma API, unificada pelo
+   Guilherme e hospedada no Render. Nao ha mais banco local: este
+   cliente e o unico caminho para os dados.
    ===================================================================== */
 
 using System;
@@ -69,12 +62,6 @@ namespace PlataformaCursosWeb.Services
             afr_configuracao = afr_config;
         }
 
-        // Le do appsettings.json, secao "Api". Ausente = desligada.
-        public bool EstaAtiva()
-        {
-            return afr_configuracao.GetValue<bool?>("Api:Ativa") ?? true;
-        }
-
         public string ObterUrlBase()
         {
             string afr_url = afr_configuracao.GetValue<string>("Api:UrlBase");
@@ -94,12 +81,7 @@ namespace PlataformaCursosWeb.Services
 
         public string ObterDescricao()
         {
-            if (!EstaAtiva())
-            {
-                return "Modo SQL Server (API desligada).";
-            }
-
-            return "Modo API: " + ObterUrlBase();
+            return "API: " + ObterUrlBase();
         }
     }
 
@@ -242,11 +224,10 @@ namespace PlataformaCursosWeb.Services
         public RespostaApi PrimeiroAcesso(string tokenPrimeiroAcesso, string senhaTemporaria, string novaSenha)
             => Chamar(HttpMethod.Post, "/api/auth/primeiro-acesso", new { tokenPrimeiroAcesso, senhaTemporaria, novaSenha });
 
-        public RespostaApi RecuperarSenha(string afr_email, string codigo = "", string novaSenha = "")
+        public RespostaApi RecuperarSenha(string afr_email, string codigo, string novaSenha)
         {
             Dictionary<string, string> afr_corpo = new Dictionary<string, string>();
             afr_corpo["email"] = (afr_email ?? "").Trim().ToLowerInvariant();
-
             afr_corpo["codigoRecuperacao"] = codigo;
             afr_corpo["novaSenha"] = novaSenha;
             return Chamar(HttpMethod.Post, "/api/auth/recover", afr_corpo);
@@ -384,7 +365,8 @@ namespace PlataformaCursosWeb.Services
         }
 
         public RespostaApi CriarCurso(string afr_titulo, string afr_descricao,
-                                      int afr_cargaHoraria, bool afr_ativo)
+                                      int afr_cargaHoraria, bool afr_ativo,
+                                      int? afr_professorId)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
@@ -392,13 +374,14 @@ namespace PlataformaCursosWeb.Services
             afr_corpo["descricao"] = afr_descricao ?? "";
             afr_corpo["cargaHoraria"] = afr_cargaHoraria;
             afr_corpo["ativo"] = afr_ativo;
+            afr_corpo["professorId"] = afr_professorId;
 
             return Chamar(HttpMethod.Post, "/api/admin/cursos", afr_corpo);
         }
 
         public RespostaApi AlterarCurso(int afr_cursoId, string afr_titulo,
                                         string afr_descricao, int afr_cargaHoraria,
-                                        bool afr_ativo)
+                                        bool afr_ativo, int? afr_professorId)
         {
             Dictionary<string, object> afr_corpo = new Dictionary<string, object>();
 
@@ -406,6 +389,7 @@ namespace PlataformaCursosWeb.Services
             afr_corpo["descricao"] = afr_descricao ?? "";
             afr_corpo["cargaHoraria"] = afr_cargaHoraria;
             afr_corpo["ativo"] = afr_ativo;
+            afr_corpo["professorId"] = afr_professorId;
 
             return Chamar(HttpMethod.Put, "/api/admin/cursos/" + afr_cursoId, afr_corpo);
         }
@@ -494,7 +478,7 @@ namespace PlataformaCursosWeb.Services
         }
 
         // -------------------------------------------------------------
-        // VERSAO 5 - rotas que so a NOSSA API tem (Api/PlataformaCursosApi)
+        // VERSAO 5 - rotas a mais da API do grupo
         //
         // A API do grupo e propria do desktop e da web, com as mesmas
         // rotas e regras da API do Gui, mais estas, que as telas daqui
@@ -610,7 +594,7 @@ namespace PlataformaCursosWeb.Services
                 if (afr_resposta.afr_CodigoHttp == 401)
                 {
                     EsquecerToken();
-                    afr_resposta.afr_Mensagem = "Sessao expirada. Entre novamente.";
+                    afr_resposta.afr_Mensagem = "Sessão expirada. Entre novamente.";
                     return afr_resposta;
                 }
 
@@ -622,17 +606,17 @@ namespace PlataformaCursosWeb.Services
                     if (afr_resposta.afr_CodigoHttp == 403)
                     {
                         afr_resposta.afr_Mensagem =
-                            "Seu perfil nao tem permissao para esta operacao.";
+                            "Seu perfil não tem permissão para esta operação.";
                     }
                     else if (afr_resposta.afr_CodigoHttp == 501)
                     {
                         afr_resposta.afr_Mensagem =
-                            "Esta operacao ainda nao existe na API.";
+                            "Esta operação ainda não existe na API.";
                     }
                     else if (!afr_resposta.afr_Ok)
                     {
                         afr_resposta.afr_Mensagem =
-                            "A API respondeu com o codigo " + afr_resposta.afr_CodigoHttp + ".";
+                            "A API respondeu com o código " + afr_resposta.afr_CodigoHttp + ".";
                     }
                 }
 
@@ -643,7 +627,7 @@ namespace PlataformaCursosWeb.Services
                 // API fora do ar, URL errada, sem rede. Nunca deixa a
                 // excecao subir ate a tela: vira mensagem.
                 afr_resposta.afr_Ok = false;
-                afr_resposta.afr_Mensagem = "Nao foi possivel falar com a API: " +
+                afr_resposta.afr_Mensagem = "Não foi possível falar com a API: " +
                                             afr_erro.Message;
                 return afr_resposta;
             }
@@ -774,6 +758,12 @@ namespace PlataformaCursosWeb.Services
         [JsonPropertyName("totalAulas")]
         public int afr_TotalAulas { get; set; }
 
+        [JsonPropertyName("professorId")]
+        public int? afr_ProfessorId { get; set; }
+
+        [JsonPropertyName("professorNome")]
+        public string afr_ProfessorNome { get; set; } = "";
+
         public Curso ParaCurso()
         {
             Curso afr_curso = new Curso();
@@ -784,6 +774,8 @@ namespace PlataformaCursosWeb.Services
             afr_curso.afr_CargaHoraria = afr_CargaHoraria;
             afr_curso.afr_Ativo = afr_Ativo;
             afr_curso.afr_TotalAulas = afr_TotalAulas;
+            afr_curso.afr_ProfessorId = afr_ProfessorId;
+            afr_curso.afr_ProfessorNome = afr_ProfessorNome ?? "";
 
             return afr_curso;
         }
@@ -802,7 +794,7 @@ namespace PlataformaCursosWeb.Services
         public int afr_Concluidas { get; set; }
 
         // Passou a vir no corpo quando a matricula virou explicita.
-        // Diz se o aluno logado ja esta matriculado neste curso.
+        // Diz se o aluno logado ja está matriculado neste curso.
         [JsonPropertyName("matriculado")]
         public bool afr_Matriculado { get; set; }
     }

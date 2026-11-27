@@ -1,19 +1,10 @@
 @*
     =====================================================================
-    DC02 / DS02 - Recuperacao de senha em TRES ETAPAS.
+    DC02 / DS02 - Recuperacao de senha com o CODIGO PESSOAL.
 
-    O diagrama DS02 tem quatro linhas de vida: Aluno, TelaRecuperacao,
-    Sistema e EMAIL. E a linha "Email", com a mensagem
-    enviarCodigo(email), que obriga as tres etapas:
-
-        1) informar o email      -> solicitarRecuperacao / enviarCodigo
-        2) conferir o codigo     -> conferirCodigo
-        3) escolher a nova senha -> recuperacaoConcluida
-
-    UMA PAGINA, TRES FORMULARIOS. O campo afr_Etapa do ViewModel diz
-    qual mostrar. Os dados das etapas anteriores viajam em campos
-    escondidos (hidden), e o codigo e conferido DE NOVO no servidor na
-    etapa 3: ninguem pula a etapa 2 mandando o formulario na mao.
+    A pessoa recebe esse codigo ao criar a conta (ou no primeiro
+    acesso). Aqui ela informa email, codigo e nova senha; a API confere
+    o codigo, troca a senha e devolve um codigo novo para guardar.
     =====================================================================
 *@
 @model RecuperarSenhaViewModel
@@ -42,13 +33,13 @@
         <div class="cartao">
         @if (ViewBag.Erro != null) { <p class="aviso aviso-erro">@ViewBag.Erro</p> }
         @if (ViewBag.NovoCodigo != null) {
-            <p class="aviso aviso-sucesso">Senha redefinida. Guarde o novo codigo: <strong>@ViewBag.NovoCodigo</strong></p>
+            <p class="aviso aviso-sucesso">Senha redefinida. Guarde o novo código: <strong>@ViewBag.NovoCodigo</strong></p>
         } else {
-            <p class="ajuda">Use o codigo pessoal recebido no cadastro.</p>
+            <p class="ajuda">Use o código pessoal recebido no cadastro.</p>
             <form asp-controller="Conta" asp-action="RedefinirSenha" method="post">
                 @Html.AntiForgeryToken()
                 <div class="campo"><label>Email</label><input asp-for="afr_Email" type="email" required /></div>
-                <div class="campo"><label>Codigo pessoal</label><input asp-for="afr_Codigo" maxlength="19" required /></div>
+                <div class="campo"><label>Código pessoal</label><input asp-for="afr_Codigo" maxlength="19" required /></div>
                 <div class="campo"><label>Nova senha</label><input asp-for="afr_NovaSenha" type="password" minlength="8" maxlength="128" required /></div>
                 <div class="campo"><label>Confirmar senha</label><input asp-for="afr_Confirmacao" type="password" required /></div>
                 <button class="botao botao-primario botao-largo" type="submit">Redefinir senha</button>

@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
    Arquivo...: Models/Modelo.cs  (classes de dominio)
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    VERSAO 2 - alinhada com a modelagem UML (Projeto_UML.asta)
 
@@ -9,7 +8,7 @@
    1) Perfil PROFESSOR, que aparece nos diagramas DS07 a DS10
    2) Aula ganhou Conteudo (DS05: exibirConteudo)
    3) Curso ganhou PercentualMinimo (DS08: obterRequisitosCurso)
-   4) Classes novas: FiltroCurso, CodigoRecuperacao, LogAcao,
+   4) Classes novas: FiltroCurso, LogAcao,
       ResultadoConclusao e ElegibilidadeExclusao
 
    OS TRES PERFIS, conforme os diagramas de sequencia:
@@ -186,6 +185,21 @@ namespace PlataformaCursosWeb.Models
 
         public int afr_TotalAulas { get; set; }
 
+        // Professor responsavel. Sem professor (null) quando o professor
+        // foi excluido: o curso fica, e o admin escolhe outro.
+        public int? afr_ProfessorId { get; set; }
+        public string afr_ProfessorNome { get; set; } = "";
+
+        public string ObterNomeProfessor()
+        {
+            if (afr_ProfessorId == null || string.IsNullOrWhiteSpace(afr_ProfessorNome))
+            {
+                return "Sem professor";
+            }
+
+            return afr_ProfessorNome;
+        }
+
         public Curso()
         {
         }
@@ -309,12 +323,12 @@ namespace PlataformaCursosWeb.Models
 
             if (afr_CargaMaxima > 0)
             {
-                afr_partes.Add("carga ate " + afr_CargaMaxima + "h");
+                afr_partes.Add("carga até " + afr_CargaMaxima + "h");
             }
 
             if (afr_SomenteNaoConcluidos)
             {
-                afr_partes.Add("apenas nao concluidos");
+                afr_partes.Add("apenas não concluídos");
             }
 
             if (afr_partes.Count == 0)
@@ -349,7 +363,7 @@ namespace PlataformaCursosWeb.Models
 
             if (afr_Aprovado)
             {
-                return "CONCLUIDO";
+                return "CONCLUÍDO";
             }
 
             if (afr_Concluidas > 0)
@@ -357,7 +371,7 @@ namespace PlataformaCursosWeb.Models
                 return "EM ANDAMENTO";
             }
 
-            return "NAO INICIADO";
+            return "NÃO INICIADO";
         }
 
         public string ObterResumo()
@@ -381,37 +395,6 @@ namespace PlataformaCursosWeb.Models
         public string ObterResumo()
         {
             return afr_Curso.afr_Titulo + ": " + afr_Resultado.ObterResumo();
-        }
-    }
-
-    // =================================================================
-    // CLASSE 8 - CodigoRecuperacao
-    // DS02 - enviarCodigo(email) / codigoEnviado()
-    // =================================================================
-    public class CodigoRecuperacao
-    {
-        public int afr_Id { get; set; }
-        public int afr_UsuarioId { get; set; }
-        public string afr_Codigo { get; set; } = "";
-        public DateTime afr_Expiracao { get; set; }
-        public bool afr_Usado { get; set; }
-
-        public bool EstaValido()
-        {
-            // Operador logico E (&&)
-            return !afr_Usado && DateTime.Now <= afr_Expiracao;
-        }
-
-        public int MinutosRestantes()
-        {
-            double afr_minutos = (afr_Expiracao - DateTime.Now).TotalMinutes;
-
-            if (afr_minutos < 0)
-            {
-                return 0;
-            }
-
-            return (int)Math.Ceiling(afr_minutos);
         }
     }
 
@@ -467,7 +450,7 @@ namespace PlataformaCursosWeb.Models
         {
             if (afr_DadosDetalhados.Count == 0)
             {
-                return "Nenhum dado relacionado sera afetado.";
+                return "Nenhum dado relacionado será afetado.";
             }
 
             return "- " + string.Join(Environment.NewLine + "- ", afr_DadosDetalhados);
@@ -656,7 +639,7 @@ namespace PlataformaCursosWeb.Models
 
         public string ObterResumo()
         {
-            return "Nivel " + ObterNivel() + " (" + ObterTituloDoNivel() + ") - " +
+            return "Nível " + ObterNivel() + " (" + ObterTituloDoNivel() + ") - " +
                    afr_XpTotal + " XP - " +
                    ContarConquistadas() + " de " + afr_Conquistas.Count + " conquistas";
         }
@@ -736,7 +719,7 @@ namespace PlataformaCursosWeb.Models
 
             if (SubiuDeNivel())
             {
-                afr_partes.Add("subiu para o nivel " + ObterNivel());
+                afr_partes.Add("subiu para o nível " + ObterNivel());
             }
 
             foreach (Conquista afr_item in afr_NovasConquistas)
@@ -789,7 +772,7 @@ namespace PlataformaCursosWeb.Models
 
         public string ObterNivelTexto()
         {
-            return "Nivel " + ObterNivel();
+            return "Nível " + ObterNivel();
         }
 
         // Uma medalha para os tres primeiros, e so quando ja ha XP:
@@ -820,7 +803,7 @@ namespace PlataformaCursosWeb.Models
         public string ObterResumo()
         {
             return afr_Posicao + "o  " + afr_Nome + "  -  " +
-                   afr_XpTotal + " XP (nivel " + ObterNivel() + ")";
+                   afr_XpTotal + " XP (nível " + ObterNivel() + ")";
         }
     }
 

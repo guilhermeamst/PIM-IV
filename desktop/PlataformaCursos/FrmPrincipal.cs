@@ -29,7 +29,6 @@ namespace PlataformaCursos
 {
     public partial class FrmPrincipal : Form
     {
-        private BancoService afr_bancoService = new BancoService();
 
         // VERSAO 4 - no modo API a conexao testada e descrita e a da API
         private PonteApi afr_ponte = new PonteApi();
@@ -64,7 +63,7 @@ namespace PlataformaCursos
             // Protecao: ninguem chega aqui sem estar logado
             if (!Sessao.EstaAberta())
             {
-                MessageBox.Show("Sessao nao encontrada. Faca o login novamente.", "Acesso",
+                MessageBox.Show("Sessão não encontrada. Faça o login novamente.", "Acesso",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 this.Close();
                 return;
@@ -72,10 +71,10 @@ namespace PlataformaCursos
 
             Usuario afr_usuario = Sessao.ObterUsuario();
 
-            afr_lblBoasVindas.Text = "Ola, " + afr_usuario.ObterPrimeiroNome() +
+            afr_lblBoasVindas.Text = "Olá, " + afr_usuario.ObterPrimeiroNome() +
                                      ".  |  " + afr_usuario.ObterResumo();
 
-            afr_lblSessao.Text = "Sessao aberta " + Sessao.ObterTempoSessao() + ".";
+            afr_lblSessao.Text = "Sessão aberta " + Sessao.ObterTempoSessao() + ".";
 
             // A API nao devolve a data de cadastro: sem ela, a frase sai
             // em vez de mostrar 01/01/0001
@@ -104,18 +103,18 @@ namespace PlataformaCursos
 
             if (Sessao.EhAdministrador())
             {
-                afr_lblStatus.Text = "Perfil ADMIN: catalogo, cursos, progresso dos alunos e usuarios.  "
-                                   + (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+                afr_lblStatus.Text = "Perfil ADMIN: catálogo, cursos, progresso dos alunos e usuários.  "
+                                   + afr_ponte.ObterDescricao();
             }
             else if (Sessao.EhProfessor())
             {
-                afr_lblStatus.Text = "Perfil PROFESSOR: catalogo, cursos e aulas, e progresso dos alunos.  "
-                                   + (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+                afr_lblStatus.Text = "Perfil PROFESSOR: catálogo, cursos e aulas, e progresso dos alunos.  "
+                                   + afr_ponte.ObterDescricao();
             }
             else
             {
-                afr_lblStatus.Text = "Perfil ALUNO: catalogo de cursos e as suas aulas.  "
-                                   + (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+                afr_lblStatus.Text = "Perfil ALUNO: catálogo de cursos e as suas aulas.  "
+                                   + afr_ponte.ObterDescricao();
             }
 
             // VERSAO 3 - painel de XP, nivel e conquistas
@@ -238,12 +237,12 @@ namespace PlataformaCursos
         {
             Pontuacao afr_pontuacao = afr_gamificacaoService.ObterPontuacao(afr_usuarioId);
 
-            afr_lblNivel.Text = "Nivel " + afr_pontuacao.ObterNivel() +
+            afr_lblNivel.Text = "Nível " + afr_pontuacao.ObterNivel() +
                                 " - " + afr_pontuacao.ObterTituloDoNivel();
 
             string afr_textoXp = afr_pontuacao.afr_XpTotal + " XP  |  faltam " +
                                  afr_pontuacao.ObterXpParaProximoNivel() +
-                                 " para o nivel " + (afr_pontuacao.ObterNivel() + 1);
+                                 " para o nível " + (afr_pontuacao.ObterNivel() + 1);
 
             // VERSAO 3.1 - sequencia de dias seguidos, vinda da API.
             // So aparece a partir de 2 dias: "1 dia seguido" nao e
@@ -340,9 +339,7 @@ namespace PlataformaCursos
         {
             string afr_mensagem;
 
-            bool afr_ok = afr_ponte.Ativa()
-                ? afr_ponte.TestarConexao(out afr_mensagem)
-                : afr_bancoService.TestarConexao(out afr_mensagem);
+            bool afr_ok = afr_ponte.TestarConexao(out afr_mensagem);
 
             if (afr_ok)
             {
@@ -355,8 +352,8 @@ namespace PlataformaCursos
 
             afr_lblStatus.Text = afr_mensagem;
 
-            MessageBox.Show((afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao()) + Environment.NewLine + afr_mensagem,
-                            "Conexao", MessageBoxButtons.OK,
+            MessageBox.Show(afr_ponte.ObterDescricao() + Environment.NewLine + afr_mensagem,
+                            "Conexão", MessageBoxButtons.OK,
                             afr_ok ? MessageBoxIcon.Information : MessageBoxIcon.Error);
         }
 
@@ -368,7 +365,7 @@ namespace PlataformaCursos
         private void afr_btnLogout_Click(object sender, EventArgs e)
         {
             // clicarLogout()
-            DialogResult afr_resposta = MessageBox.Show("Deseja encerrar a sessao?", "Logout",
+            DialogResult afr_resposta = MessageBox.Show("Deseja encerrar a sessão?", "Logout",
                                                         MessageBoxButtons.YesNo,
                                                         MessageBoxIcon.Question);
 

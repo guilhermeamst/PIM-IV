@@ -20,7 +20,7 @@
 
 <h1>Cursos e aulas</h1>
 <p class="subtitulo">
-    Cadastre os cursos, defina o requisito de conclusao e monte as aulas
+    Cadastre os cursos, defina o requisito de conclusão e monte as aulas
     de cada um.
 </p>
 
@@ -30,10 +30,10 @@
             <div class="campo campo-largo">
                 <label for="termo">Buscar curso</label>
                 <input type="search" id="termo" name="termo" value="@afr_termo"
-                       placeholder="Titulo ou descricao" />
+                       placeholder="Título ou descrição" />
             </div>
 
-            <button type="submit" class="botao">Buscar (SELECT)</button>
+            <button type="submit" class="botao">Buscar</button>
 
             <a asp-controller="Cursos" asp-action="Novo" class="botao botao-primario">
                 Novo curso
@@ -55,12 +55,12 @@ else
             <thead>
                 <tr>
                     <th>Id</th>
-                    <th>Titulo</th>
+                    <th>Título</th>
                     <th>Carga</th>
                     <th>Aulas</th>
-                    <th>Minimo</th>
-                    <th>Situacao</th>
-                    <th class="coluna-acoes">Acoes</th>
+                    <th>Professor</th>
+                    <th>Situação</th>
+                    <th class="coluna-acoes">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -72,8 +72,17 @@ else
                         <td>@afr_curso.afr_CargaHoraria h</td>
                         <td>@afr_curso.afr_TotalAulas</td>
 
-                        @* DS08 - o requisito de conclusao do curso *@
-                        <td>@afr_curso.afr_PercentualMinimo%</td>
+                        @* Professor do curso; sem professor fica em destaque *@
+                        <td>
+                            @if (afr_curso.afr_ProfessorId == null)
+                            {
+                                <span class="etiqueta etiqueta-inativo">Sem professor</span>
+                            }
+                            else
+                            {
+                                @afr_curso.ObterNomeProfessor()
+                            }
+                        </td>
 
                         <td>
                             @if (afr_curso.afr_Ativo)
@@ -108,17 +117,17 @@ else
     </section>
 
     <p class="ajuda">
-        @Model.Count curso(s) na tabela dbo.Cursos. @ViewBag.StatusBanco
+        @Model.Count curso(s). Dados da @ViewBag.StatusBanco
     </p>
 
     <p class="ajuda">
-        A coluna <strong>Minimo</strong> e o percentual de aulas que o aluno
-        precisa concluir para o curso contar como concluido (DS08). Um curso
-        de 75% fecha com tres quartos das aulas.
+        A coluna <strong>Professor</strong> mostra quem cuida do curso. Quando
+        um professor é excluído, o curso continua e aparece como
+        <strong>Sem professor</strong> até o administrador escolher outro em Editar.
     </p>
 
     <p class="ajuda">
-        A exclusao acontece em duas etapas (DS10): a proxima pagina mostra
-        quantas aulas e quantos alunos serao afetados e pede a sua senha.
+        A exclusão acontece em duas etapas (DS10): a próxima página mostra
+        quantas aulas e quantos alunos serão afetados e pede a sua senha.
     </p>
 }

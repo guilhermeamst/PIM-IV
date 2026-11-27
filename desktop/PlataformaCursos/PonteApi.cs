@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - Trabalho em grupo
    Arquivo...: PonteApi.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    VERSAO 4 - a ponte entre os servicos e a API Node.js
 
@@ -17,23 +16,14 @@
    telas e os servicos continuam iguais: so o lugar de onde vem o dado
    muda.
 
-   QUANDO E USADA
-   So com a API ligada (perfil "API (Azure)", ver ConfiguracaoApi). Com ela
-   desligada o programa usa o banco local, como antes - o modo de
-   testes combinado pelo grupo enquanto a API nao estiver no Azure.
-
-   VERSAO 5 - A API E A NOSSA (Api/PlataformaCursosApi)
-   Cada projeto do grupo tem a sua API, e as duas gravam no mesmo banco
-   do Azure. A nossa segue as rotas e as regras da API do Gui e tem
-   rotas a mais para as telas daqui (editar e excluir usuario, editar
-   aula, progresso e XP de um aluno).
+   O DESKTOP SO FALA COM A API
+   Nao existe mais banco local. A API e a do grupo, unificada pelo
+   Guilherme e hospedada no Render (ver ConfiguracaoApi); o aplicativo
+   e a web usam a mesma.
 
    O QUE AINDA NAO DA
-   Historico de acoes, recuperacao de senha e o texto da aula precisam
-   de tabelas que o banco do Azure nao tem. Combinar com o grupo antes
-   de criar: o banco e compartilhado. Ate la, essas telas avisam em vez
-   de cair escondido no banco local - metade no banco e metade na API e
-   justamente o que o grupo quis evitar.
+   Historico de acoes: a API nao tem a rota. A tela de perfil mostra as
+   listas vazias ate a rota existir.
    ===================================================================== */
 
 using System;
@@ -47,11 +37,6 @@ namespace PlataformaCursos
         // programa inteiro (ConfiguracaoApi.ObterCliente) e guarda o token
         // do login. Na web cada requisicao cria o seu e o token vem do
         // cookie. O resto desta classe e igual nas duas.
-        public bool Ativa()
-        {
-            return ConfiguracaoApi.ATIVA;
-        }
-
         public string ObterDescricao()
         {
             return ConfiguracaoApi.ObterDescricao();
@@ -91,7 +76,7 @@ namespace PlataformaCursos
             // Com resposta, e a API dizendo que o banco nao respondeu.
             afr_mensagem = afr_resposta.afr_CodigoHttp == 0
                 ? afr_resposta.afr_Mensagem
-                : "A API respondeu, mas o banco nao: " + afr_resposta.afr_Mensagem;
+                : "A API respondeu, mas o banco não: " + afr_resposta.afr_Mensagem;
             return false;
         }
 
@@ -116,7 +101,7 @@ namespace PlataformaCursos
 
                 // Se a API respondeu mas o banco nao (firewall do Azure,
                 // por exemplo), esperar nao adianta
-                if (!afr_mensagem.Contains("Nao foi possivel falar com a API") ||
+                if (!afr_mensagem.Contains("Não foi possível falar com a API") ||
                     DateTime.Now >= afr_limite)
                 {
                     return false;
@@ -186,21 +171,26 @@ namespace PlataformaCursos
             return afr_usuario != null;
         }
 
-        // POST /api/auth/recover - hoje sempre 501
+        // Os mesmos atalhos da PonteApi da web (cadastro de aluno, primeiro
+        // acesso). Cada chamada usa um cliente novo, sem token: sao rotas
+        // de quem ainda nao entrou no sistema.
+        public RespostaApi LoginPublico(string afr_email, string afr_senha)
+        {
+            return new ClienteApi(ConfiguracaoApi.URL_BASE).Entrar(afr_email, afr_senha);
+        }
+
+        public RespostaApi Registrar(string afr_nome, string afr_email, string afr_senha, string afr_confirmarSenha)
+        {
+            return new ClienteApi(ConfiguracaoApi.URL_BASE).CadastrarAluno(afr_nome, afr_email, afr_senha, afr_confirmarSenha);
+        }
+
+        public RespostaApi PrimeiroAcesso(string afr_token, string afr_temporaria, string afr_nova)
+        {
+            return new ClienteApi(ConfiguracaoApi.URL_BASE).PrimeiroAcesso(afr_token, afr_temporaria, afr_nova);
+        }
+
         public RespostaApi RecuperarComCodigo(string email, string codigo, string senha) => Cliente().RecuperarSenha(email, codigo, senha);
 
-        public string RecuperarSenha(string afr_email)
-        {
-            RespostaApi afr_resposta = Cliente().RecuperarSenha(afr_email);
-
-            if (afr_resposta.afr_CodigoHttp == 501)
-            {
-                return "A recuperacao de senha ainda nao existe na API. " +
-                       "Procure o administrador para trocar a senha.";
-            }
-
-            return afr_resposta.afr_Mensagem;
-        }
 
         // =============================================================
         // USUARIOS
@@ -221,6 +211,25 @@ namespace PlataformaCursos
                 foreach (UsuarioApi afr_item in afr_itens)
                 {
                     afr_lista.Add(afr_item.ParaUsuario());
+                }
+            }
+
+            return afr_lista;
+        }
+
+        // -------------------------------------------------------------
+        // Professores ativos, para o admin escolher o responsavel por
+        // um curso (rota de usuarios do admin, filtrada aqui).
+        // -------------------------------------------------------------
+        public List<Usuario> ListarProfessores()
+        {
+            List<Usuario> afr_lista = new List<Usuario>();
+
+            foreach (Usuario afr_usuario in ListarUsuarios(""))
+            {
+                if (afr_usuario.afr_Perfil == Usuario.PERFIL_PROFESSOR && afr_usuario.afr_Ativo)
+                {
+                    afr_lista.Add(afr_usuario);
                 }
             }
 
@@ -308,7 +317,7 @@ namespace PlataformaCursos
                 afr_usuario.afr_Nome, afr_usuario.afr_Email,
                 afr_usuario.afr_Senha, afr_usuario.afr_Perfil);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario cadastrado. Entregue a senha temporaria ao usuario." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário cadastrado. Entregue a senha temporária ao usuário." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -321,7 +330,7 @@ namespace PlataformaCursos
                 afr_usuario.afr_Id, afr_usuario.afr_Nome, afr_usuario.afr_Email,
                 afr_usuario.afr_Senha, afr_usuario.afr_Perfil, afr_usuario.afr_Ativo);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario atualizado." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário atualizado." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -330,7 +339,7 @@ namespace PlataformaCursos
         {
             RespostaApi afr_resposta = Cliente().ExcluirUsuario(afr_id);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Usuario excluido." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Usuário excluído." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -382,6 +391,13 @@ namespace PlataformaCursos
                 Curso afr_curso = afr_item.ParaCurso();
                 afr_curso.afr_PercentualMinimo = 100;
 
+                // A rota do professor so traz os cursos dele, sem o nome
+                if (Sessao.EhProfessor())
+                {
+                    afr_curso.afr_ProfessorId = Sessao.ObterUsuarioId();
+                    afr_curso.afr_ProfessorNome = Sessao.ObterUsuario().afr_Nome;
+                }
+
                 bool afr_combina = afr_busca == "" ||
                                    afr_curso.afr_Titulo.ToLowerInvariant().Contains(afr_busca) ||
                                    afr_curso.afr_Descricao.ToLowerInvariant().Contains(afr_busca);
@@ -430,7 +446,8 @@ namespace PlataformaCursos
         {
             RespostaApi afr_resposta = Sessao.EhAdministrador()
                 ? Cliente().CriarCurso(afr_curso.afr_Titulo, afr_curso.afr_Descricao,
-                                       afr_curso.afr_CargaHoraria, afr_curso.afr_Ativo)
+                                       afr_curso.afr_CargaHoraria, afr_curso.afr_Ativo,
+                                       afr_curso.afr_ProfessorId)
                 : Cliente().CriarCursoProfessor(afr_curso.afr_Titulo, afr_curso.afr_Descricao,
                                                 afr_curso.afr_CargaHoraria);
 
@@ -443,7 +460,7 @@ namespace PlataformaCursos
             RespostaApi afr_resposta = Sessao.EhAdministrador()
                 ? Cliente().AlterarCurso(afr_curso.afr_Id, afr_curso.afr_Titulo,
                                          afr_curso.afr_Descricao, afr_curso.afr_CargaHoraria,
-                                         afr_curso.afr_Ativo)
+                                         afr_curso.afr_Ativo, afr_curso.afr_ProfessorId)
                 : Cliente().AlterarCursoProfessor(afr_curso.afr_Id, afr_curso.afr_Titulo,
                                                   afr_curso.afr_Descricao,
                                                   afr_curso.afr_CargaHoraria);
@@ -457,13 +474,13 @@ namespace PlataformaCursos
         {
             if (!Sessao.EhAdministrador())
             {
-                afr_mensagem = "Na API, so o administrador exclui curso.";
+                afr_mensagem = "Na API, só o administrador exclui curso.";
                 return false;
             }
 
             RespostaApi afr_resposta = Cliente().ExcluirCurso(afr_cursoId);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Curso excluido." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Curso excluído." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -502,7 +519,22 @@ namespace PlataformaCursos
 
             foreach (AulaApi afr_item in afr_detalhe.afr_Aulas)
             {
-                afr_lista.Add(afr_item.ParaAula(afr_cursoId));
+                Aula afr_aula = afr_item.ParaAula(afr_cursoId);
+
+                // A rota do curso nao manda o TEXTO das aulas. Para quem
+                // gerencia (professor e admin), o texto vem da rota de cada
+                // aula - sem isso toda aula pareceria "sem conteudo".
+                if (afr_item.Conteudo == null && !(!Sessao.EhAdministrador() && !Sessao.EhProfessor()))
+                {
+                    Aula afr_completa = AbrirAula(afr_aula.afr_Id);
+
+                    if (afr_completa != null)
+                    {
+                        afr_aula.afr_Conteudo = afr_completa.afr_Conteudo;
+                    }
+                }
+
+                afr_lista.Add(afr_aula);
             }
 
             return afr_lista;
@@ -543,7 +575,7 @@ namespace PlataformaCursos
                 : Cliente().CriarAulaProfessor(afr_aula.afr_CursoId, afr_aula.afr_Titulo,
                                                afr_aula.afr_DuracaoMin, afr_aula.afr_Conteudo);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Aula incluida." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Aula incluída." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -553,7 +585,7 @@ namespace PlataformaCursos
                 ? Cliente().ExcluirAula(afr_aulaId)
                 : Cliente().ExcluirAulaProfessor(afr_aulaId);
 
-            afr_mensagem = afr_resposta.afr_Ok ? "Aula excluida." : afr_resposta.afr_Mensagem;
+            afr_mensagem = afr_resposta.afr_Ok ? "Aula excluída." : afr_resposta.afr_Mensagem;
             return afr_resposta.afr_Ok;
         }
 
@@ -588,7 +620,7 @@ namespace PlataformaCursos
                 afr_ganho = afr_corpo.afr_Gamificacao.ParaGanho();
             }
 
-            afr_mensagem = afr_concluida ? "Aula concluida." : "Aula desmarcada.";
+            afr_mensagem = afr_concluida ? "Aula concluída." : "Aula desmarcada.";
             return true;
         }
 
@@ -713,9 +745,9 @@ namespace PlataformaCursos
             return afr_lista;
         }
 
-        // A mesma conta do BancoService.MontarResultado, com o minimo
-        // fixo em 100 (ver ListarCursos)
-        private ResultadoConclusao MontarResultado(int afr_concluidas, int afr_total)
+        // Percentual e aprovacao de um curso, com o minimo fixo em 100
+        // (para a API, curso concluido e curso com todas as aulas feitas)
+        public static ResultadoConclusao MontarResultado(int afr_concluidas, int afr_total)
         {
             ResultadoConclusao afr_resultado = new ResultadoConclusao();
 

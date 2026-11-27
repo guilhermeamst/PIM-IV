@@ -1,7 +1,6 @@
 /* =====================================================================
    PLATAFORMA DE CURSOS ONLINE - VERSAO WEB
    Arquivo...: Controllers/ContaController.cs
-   Professor.: Antonio Graça
    ---------------------------------------------------------------------
    CASOS DE USO: DC01 Login, DC02 Recuperar Senha, DC06 Logout
    DIAGRAMAS...: DS01, DS02, DS06
@@ -13,11 +12,9 @@
    [HttpGet]  = o navegador esta ABRINDO a pagina
    [HttpPost] = o usuario ENVIOU o formulario
 
-   A RECUPERACAO DE SENHA TEM TRES ETAPAS NESTA VERSAO, porque o
-   diagrama DS02 tem a linha de vida "Email" e a mensagem
-   enviarCodigo(email). Cada etapa e uma acao [HttpPost] diferente, e
-   todas devolvem a MESMA pagina (RecuperarSenha.cshtml) - o que muda
-   e o campo afr_Etapa do ViewModel.
+   A RECUPERACAO DE SENHA usa o codigo pessoal que a pessoa recebe ao
+   criar a conta: email + codigo + nova senha, num formulario so. A
+   API confere o codigo, troca a senha e devolve um codigo novo.
    ===================================================================== */
 
 using System.Security.Claims;
@@ -32,17 +29,13 @@ namespace PlataformaCursosWeb.Controllers
     public class ContaController : Controller
     {
         private readonly AutenticacaoService afr_autenticacaoService;
-        private readonly BancoService afr_bancoService;
-
-        // VERSAO 4 - no modo API a conexao testada e descrita e a da API
+        // A conexao testada e descrita e a da API do grupo
         private readonly PonteApi afr_ponte;
 
         // Os servicos chegam prontos pela INJECAO DE DEPENDENCIA
-        public ContaController(AutenticacaoService afr_autenticacao, BancoService afr_banco,
-                               PonteApi afr_ponteApi)
+        public ContaController(AutenticacaoService afr_autenticacao, PonteApi afr_ponteApi)
         {
             afr_autenticacaoService = afr_autenticacao;
-            afr_bancoService = afr_banco;
             afr_ponte = afr_ponteApi;
         }
 
@@ -58,12 +51,10 @@ namespace PlataformaCursosWeb.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            // Avisa na tela se o banco nao respondeu
+            // Avisa na tela se a API (ou o banco dela) nao respondeu
             string afr_mensagemBanco;
 
-            bool afr_conectou = afr_ponte.Ativa()
-                ? afr_ponte.AguardarApi(15, out afr_mensagemBanco)
-                : afr_bancoService.TestarConexao(out afr_mensagemBanco);
+            bool afr_conectou = afr_ponte.AguardarApi(15, out afr_mensagemBanco);
 
             if (!afr_conectou)
             {
@@ -158,21 +149,18 @@ namespace PlataformaCursosWeb.Controllers
             // Apaga o cookie: equivale ao Sessao.Encerrar() do desktop
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
-            TempData["Sucesso"] = "Sessao encerrada. Entre novamente para continuar.";
+            TempData["Sucesso"] = "Sessão encerrada. Entre novamente para continuar.";
 
             return RedirectToAction("Login");
         }
 
         // =============================================================
-        // DC02 / DS02 - RECUPERAR SENHA, ETAPA 1 (abrir a pagina)
+        // DC02 / DS02 - RECUPERAR SENHA (abrir a pagina)
         // =============================================================
         [HttpGet]
         public IActionResult RecuperarSenha(string email)
         {
             var afr_dados = new RecuperarSenhaViewModel();
-
-            afr_dados.afr_Etapa = 1;
-            afr_dados.afr_MinutosValidade = AutenticacaoService.MINUTOS_VALIDADE_CODIGO;
 
             // Aproveita o email que ja estava digitado no login
             if (!string.IsNullOrWhiteSpace(email))
@@ -184,9 +172,8 @@ namespace PlataformaCursosWeb.Controllers
         }
 
         // =============================================================
-        // DS02 - ETAPA 1: informarEmail(email)
-        //        -> solicitarRecuperacao(email) -> enviarCodigo(email)
-        //        -> codigoEnviado() -> exibirMensagem()
+        // DS02 - email + codigo pessoal + nova senha -> API
+        //        -> senha trocada e codigo novo na tela
         // =============================================================
         [HttpPost]
         [ValidateAntiForgeryToken]

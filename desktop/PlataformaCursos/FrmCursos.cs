@@ -27,8 +27,12 @@
       de montar o formulario. A tela usa GetDadosCurso para reler o
       curso do banco em vez de confiar no que esta na lista.
 
-   4) O curso tem percentual minimo de conclusao (DS08) e a aula tem
-      conteudo (DS05). Os dois ganharam campo nesta tela.
+   4) A aula tem conteudo (DS05), editado nesta tela.
+
+   5) PROFESSOR DO CURSO: o curso fica ligado a quem o criou. O admin
+      escolhe (ou troca) o professor; quando um professor e excluido,
+      o curso continua e aparece como "Sem professor" ate o admin
+      escolher outro.
    ===================================================================== */
 
 using System;
@@ -42,7 +46,6 @@ namespace PlataformaCursos
     {
         private CursoService afr_cursoService = new CursoService();
         private AulaService afr_aulaService = new AulaService();
-        private BancoService afr_bancoService = new BancoService();
 
         // VERSAO 4 - no modo API a conexao testada e descrita e a da API
         private PonteApi afr_ponte = new PonteApi();
@@ -83,8 +86,82 @@ namespace PlataformaCursos
                 return;
             }
 
+            CarregarProfessores();
             AtualizarLista("");
             EntrarModoNovo();
+        }
+
+        // =============================================================
+        // PROFESSOR DO CURSO
+        // Admin: escolhe entre os professores ativos ou "(Sem professor)".
+        // Professor: o curso e sempre dele, entao a caixa fica travada.
+        // =============================================================
+        private void CarregarProfessores()
+        {
+            afr_cmbProfessor.Items.Clear();
+            afr_cmbProfessor.DisplayMember = "afr_Nome";
+
+            if (Sessao.EhAdministrador())
+            {
+                Usuario afr_nenhum = new Usuario();
+                afr_nenhum.afr_Id = 0;
+                afr_nenhum.afr_Nome = "(Sem professor)";
+                afr_cmbProfessor.Items.Add(afr_nenhum);
+
+                foreach (Usuario afr_professor in afr_cursoService.ListarProfessores())
+                {
+                    afr_cmbProfessor.Items.Add(afr_professor);
+                }
+
+                afr_cmbProfessor.Enabled = true;
+            }
+            else
+            {
+                afr_cmbProfessor.Items.Add(Sessao.ObterUsuario());
+                afr_cmbProfessor.Enabled = false;
+            }
+
+            afr_cmbProfessor.SelectedIndex = 0;
+        }
+
+        // Seleciona na caixa o professor do curso (0 = sem professor)
+        private void SelecionarProfessor(Curso afr_curso)
+        {
+            if (!Sessao.EhAdministrador())
+            {
+                afr_cmbProfessor.SelectedIndex = 0;
+                return;
+            }
+
+            int afr_id = afr_curso.afr_ProfessorId ?? 0;
+
+            for (int i = 0; i < afr_cmbProfessor.Items.Count; i++)
+            {
+                if (((Usuario)afr_cmbProfessor.Items[i]).afr_Id == afr_id)
+                {
+                    afr_cmbProfessor.SelectedIndex = i;
+                    return;
+                }
+            }
+
+            // Professor que nao esta mais ativo: entra na caixa so para
+            // a tela nao trocar o responsavel sem o admin pedir
+            Usuario afr_antigo = new Usuario();
+            afr_antigo.afr_Id = afr_id;
+            afr_antigo.afr_Nome = afr_curso.ObterNomeProfessor();
+            afr_cmbProfessor.SelectedIndex = afr_cmbProfessor.Items.Add(afr_antigo);
+        }
+
+        private int? ObterProfessorEscolhido()
+        {
+            Usuario afr_escolhido = afr_cmbProfessor.SelectedItem as Usuario;
+
+            if (afr_escolhido == null || afr_escolhido.afr_Id == 0)
+            {
+                return null;
+            }
+
+            return afr_escolhido.afr_Id;
         }
 
         // =============================================================
@@ -106,7 +183,7 @@ namespace PlataformaCursos
 
             if (!int.TryParse(afr_txtCarga.Text.Trim(), out afr_carga))
             {
-                MessageBox.Show("A carga horaria precisa ser um numero inteiro.", "Atencao",
+                MessageBox.Show("A carga horária precisa ser um número inteiro.", "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 afr_txtCarga.Focus();
                 return;
@@ -120,8 +197,11 @@ namespace PlataformaCursos
             afr_curso.afr_CargaHoraria = afr_carga;
             afr_curso.afr_Ativo = afr_chkAtivoCurso.Checked;
 
-            // DS08 - o requisito de conclusao do curso
-            afr_curso.afr_PercentualMinimo = Convert.ToInt32(afr_numMinimo.Value);
+            // DS08 - a API considera o curso concluido com todas as aulas
+            afr_curso.afr_PercentualMinimo = 100;
+
+            // O admin escolhe o professor; o professor so cria curso para si
+            afr_curso.afr_ProfessorId = ObterProfessorEscolhido();
 
             string afr_mensagem;
             bool afr_ok;
@@ -140,7 +220,7 @@ namespace PlataformaCursos
 
             if (!afr_ok)
             {
-                MessageBox.Show(afr_mensagem, "Atencao",
+                MessageBox.Show(afr_mensagem, "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -167,8 +247,8 @@ namespace PlataformaCursos
             // solicitarExclusao(curso)
             if (afr_idSelecionado == 0)
             {
-                MessageBox.Show("Clique primeiro no curso da lista que voce quer excluir.",
-                                "Atencao", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Clique primeiro no curso da lista que você quer excluir.",
+                                "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -190,7 +270,7 @@ namespace PlataformaCursos
             if (!afr_confirmacao.afr_Confirmado)
             {
                 afr_lblStatus.ForeColor = Color.DimGray;
-                afr_lblStatus.Text = "Exclusao cancelada. Nada foi apagado.";
+                afr_lblStatus.Text = "Exclusão cancelada. Nada foi apagado.";
                 return;
             }
 
@@ -257,7 +337,7 @@ namespace PlataformaCursos
             if (afr_curso == null)
             {
                 afr_lblStatus.ForeColor = Color.Firebrick;
-                afr_lblStatus.Text = "Curso Id " + afr_id + " nao esta mais no banco. "
+                afr_lblStatus.Text = "Curso Id " + afr_id + " não está mais no banco. "
                                    + "Clique em Buscar para atualizar a lista.";
                 return;
             }
@@ -273,7 +353,7 @@ namespace PlataformaCursos
         {
             if (afr_idSelecionado == 0)
             {
-                MessageBox.Show("Escolha primeiro um curso na lista.", "Atencao",
+                MessageBox.Show("Escolha primeiro um curso na lista.", "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -282,8 +362,8 @@ namespace PlataformaCursos
 
             if (!int.TryParse(afr_txtAulaDuracao.Text.Trim(), out afr_duracao))
             {
-                MessageBox.Show("A duracao da aula precisa ser um numero inteiro de minutos.",
-                                "Atencao", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("A duração da aula precisa ser um número inteiro de minutos.",
+                                "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 afr_txtAulaDuracao.Focus();
                 return;
             }
@@ -297,14 +377,14 @@ namespace PlataformaCursos
             // DS05 - a aula ja nasce com o conteudo que estiver na caixa
             afr_aula.afr_Conteudo = afr_txtAulaConteudo.Text.Trim();
 
-            // A ordem e calculada: entra sempre como a ultima aula do curso
+            // A ordem é calculada: entra sempre como a ultima aula do curso
             afr_aula.afr_Ordem = afr_aulaService.ProximaOrdem(afr_idSelecionado);
 
             string afr_mensagem;
 
             if (!afr_aulaService.CriarAula(afr_aula, out afr_mensagem))
             {
-                MessageBox.Show(afr_mensagem, "Atencao",
+                MessageBox.Show(afr_mensagem, "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -333,7 +413,7 @@ namespace PlataformaCursos
         {
             if (afr_lstAulas.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Selecione a aula que voce quer excluir.", "Atencao",
+                MessageBox.Show("Selecione a aula que você quer excluir.", "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -343,8 +423,8 @@ namespace PlataformaCursos
 
             DialogResult afr_resposta = MessageBox.Show(
                 "Excluir a aula \"" + afr_tituloAula + "\"?" + Environment.NewLine +
-                "O progresso dos alunos nesta aula tambem sai.",
-                "Confirmacao", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                "O progresso dos alunos nesta aula também sai.",
+                "Confirmação", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
             if (afr_resposta != DialogResult.Yes)
             {
@@ -400,7 +480,7 @@ namespace PlataformaCursos
             afr_txtAulaTitulo.Text = afr_aula.afr_Titulo;
             afr_txtAulaDuracao.Text = afr_aula.afr_DuracaoMin.ToString();
 
-            afr_lblAulaConteudo.Text = "Conteudo da aula " + afr_aula.afr_Ordem +
+            afr_lblAulaConteudo.Text = "Conteúdo da aula " + afr_aula.afr_Ordem +
                                        " (Id " + afr_aula.afr_Id + "):";
         }
 
@@ -412,7 +492,7 @@ namespace PlataformaCursos
         {
             if (afr_aulaSelecionada == 0)
             {
-                MessageBox.Show("Clique primeiro em uma aula da lista.", "Atencao",
+                MessageBox.Show("Clique primeiro em uma aula da lista.", "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -421,8 +501,8 @@ namespace PlataformaCursos
 
             if (!int.TryParse(afr_txtAulaDuracao.Text.Trim(), out afr_duracao))
             {
-                MessageBox.Show("A duracao da aula precisa ser um numero inteiro de minutos.",
-                                "Atencao", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("A duração da aula precisa ser um número inteiro de minutos.",
+                                "Atenção", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 afr_txtAulaDuracao.Focus();
                 return;
             }
@@ -432,7 +512,7 @@ namespace PlataformaCursos
 
             if (afr_aula == null)
             {
-                MessageBox.Show("Esta aula nao esta mais no banco.", "Atencao",
+                MessageBox.Show("Esta aula não está mais no banco.", "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -445,7 +525,7 @@ namespace PlataformaCursos
 
             if (!afr_aulaService.EditarAula(afr_aula, out afr_mensagem))
             {
-                MessageBox.Show(afr_mensagem, "Atencao",
+                MessageBox.Show(afr_mensagem, "Atenção",
                                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -483,7 +563,13 @@ namespace PlataformaCursos
                 afr_item.SubItems.Add(afr_curso.afr_Titulo);
                 afr_item.SubItems.Add(afr_curso.afr_CargaHoraria + "h");
                 afr_item.SubItems.Add(afr_curso.afr_TotalAulas.ToString());
-                afr_item.SubItems.Add(afr_curso.afr_PercentualMinimo + "%");
+                afr_item.SubItems.Add(afr_curso.ObterNomeProfessor());
+
+                // Curso sem professor fica em laranja para o admin notar
+                if (afr_curso.afr_ProfessorId == null)
+                {
+                    afr_item.ForeColor = Color.DarkOrange;
+                }
 
                 if (afr_curso.afr_Ativo)
                 {
@@ -491,7 +577,7 @@ namespace PlataformaCursos
                 }
                 else
                 {
-                    afr_item.SubItems.Add("Nao");
+                    afr_item.SubItems.Add("Não");
                     afr_item.ForeColor = Color.Gray;
                 }
 
@@ -500,7 +586,7 @@ namespace PlataformaCursos
 
             afr_lblStatus.ForeColor = Color.DimGray;
             afr_lblStatus.Text = afr_listaAtual.Count + " curso(s) em dbo.Cursos  |  " +
-                                 (afr_ponte.Ativa() ? afr_ponte.ObterDescricao() : afr_bancoService.ObterDescricao());
+                                 afr_ponte.ObterDescricao();
 
             afr_carregandoLista = false;
         }
@@ -515,7 +601,7 @@ namespace PlataformaCursos
             if (afr_cursoId == 0)
             {
                 afr_grpAulas.Text = "Aulas do curso selecionado";
-                afr_lblAulaConteudo.Text = "Conteudo da aula selecionada:";
+                afr_lblAulaConteudo.Text = "Conteúdo da aula selecionada:";
                 return;
             }
 
@@ -542,7 +628,7 @@ namespace PlataformaCursos
 
             afr_grpAulas.Text = "Aulas de \"" + afr_txtTitulo.Text + "\"  -  " +
                                 afr_aulas.Count + " aula(s)  |  " +
-                                "as aulas em laranja ainda estao sem conteudo";
+                                "as aulas em laranja ainda estão sem conteúdo";
         }
 
         // =============================================================
@@ -595,21 +681,7 @@ namespace PlataformaCursos
             afr_txtCarga.Text = afr_curso.afr_CargaHoraria.ToString();
             afr_chkAtivoCurso.Checked = afr_curso.afr_Ativo;
 
-            // O NumericUpDown tem minimo 1 e maximo 100: se vier algo
-            // fora disso do banco, ajusta antes de atribuir.
-            int afr_minimo = afr_curso.afr_PercentualMinimo;
-
-            if (afr_minimo < 1)
-            {
-                afr_minimo = 1;
-            }
-
-            if (afr_minimo > 100)
-            {
-                afr_minimo = 100;
-            }
-
-            afr_numMinimo.Value = afr_minimo;
+            SelecionarProfessor(afr_curso);
 
             afr_lblModo.ForeColor = Color.DarkOrange;
             afr_lblModo.Text = "EDITANDO O Id " + afr_curso.afr_Id;
@@ -637,7 +709,7 @@ namespace PlataformaCursos
             afr_txtDescricao.Clear();
             afr_txtCarga.Text = "20";
             afr_chkAtivoCurso.Checked = true;
-            afr_numMinimo.Value = 100;
+            afr_cmbProfessor.SelectedIndex = 0;
 
             afr_lblModo.ForeColor = Color.Black;
             afr_lblModo.Text = "NOVO CURSO";
