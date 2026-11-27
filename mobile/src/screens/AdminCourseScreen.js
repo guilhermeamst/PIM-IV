@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import api from '../services/api';
 export default function AdminCourseScreen({
   route,
@@ -11,6 +11,11 @@ export default function AdminCourseScreen({
   const [descricao, setDescricao] = useState(initial?.descricao || '');
   const [carga, setCarga] = useState(String(initial?.cargaHoraria || ''));
   const [ativo, setAtivo] = useState(initial?.ativo !== false);
+  const [professorId, setProfessorId] = useState(initial?.professorId ?? null);
+  const [professores, setProfessores] = useState([]);
+  const [professorModal, setProfessorModal] = useState(false);
+  const [courseReady, setCourseReady] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [aulas, setAulas] = useState([]);
   const [aulaTitulo, setAulaTitulo] = useState('');
   const [aulaDuracao, setAulaDuracao] = useState('45');
@@ -41,10 +46,37 @@ export default function AdminCourseScreen({
     }
   }
   useEffect(() => {
-    if (edit) {
-      load();
-    }
+    carregarFormulario();
   }, []);
+
+  async function carregarFormulario() {
+    setCourseReady(false);
+
+    try {
+      const [usuarios, curso] = await Promise.all([
+        api.get('/admin/usuarios'),
+        edit ? api.get(`/cursos/${initial.id}`) : Promise.resolve(null)
+      ]);
+
+      setProfessores(usuarios.data.filter(usuario =>
+        usuario.perfil === 'PROFESSOR' && usuario.ativo
+      ));
+
+      if (curso) {
+        setProfessorId(curso.data.professorId ?? null);
+        setTitulo(curso.data.titulo);
+        setDescricao(curso.data.descricao || '');
+        setCarga(String(curso.data.cargaHoraria ?? 0));
+        setAtivo(Boolean(curso.data.ativo));
+        setAulas(curso.data.aulas);
+      }
+
+      setCourseReady(true);
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível carregar o curso ou os professores.');
+    }
+  }
+
   async function load() {
     try {
       const response = await api.get(`/cursos/${initial.id}`);
@@ -53,27 +85,43 @@ export default function AdminCourseScreen({
       Alert.alert('Erro', 'Não foi possível carregar as aulas.');
     }
   }
+
   async function salvar() {
+    if (!courseReady || saving) return;
+
+    if (professorId !== null && !professores.some(p => p.id === professorId)) {
+      Alert.alert('Atenção', 'Selecione um professor ativo ou deixe o curso sem professor.');
+      return;
+    }
+
+    setSaving(true);
+
     try {
       const dadosCurso = {
         titulo,
         descricao,
         cargaHoraria: Number(carga),
-        ativo
+        ativo,
+        professorId
       };
+
       if (edit) {
         await api.put(`/admin/cursos/${initial.id}`, dadosCurso);
       } else {
         await api.post('/admin/cursos', dadosCurso);
       }
+
       Alert.alert('Sucesso', edit ? 'Curso atualizado.' : 'Curso criado.', [{
         text: 'OK',
         onPress: () => navigation.goBack()
       }]);
     } catch (error) {
       Alert.alert('Erro', error.response?.data?.message || 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
     }
   }
+
   async function addAula() {
     if (lessonBusy) return;
     const titulo = aulaTitulo.trim(),
@@ -136,7 +184,60 @@ export default function AdminCourseScreen({
         <Switch value={ativo} onValueChange={setAtivo} />
       </View>
 
-      <Pressable style={styles.button} onPress={salvar}>
+      <Text style={styles.fieldLabel}>Professor responsável</Text>
+      <Pressable
+        style={styles.input}
+        disabled={!courseReady || saving}
+        onPress={() => setProfessorModal(true)}
+      >
+        <Text style={professorId === null ? styles.unassigned : null}>
+          {professorId === null
+            ? 'Sem professor'
+            : professores.find(p => p.id === professorId)?.nome || 'Professor indisponível'}
+        </Text>
+      </Pressable>
+
+      <Modal
+        visible={professorModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfessorModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalPanel}>
+            <Text style={styles.heading}>Escolher professor</Text>
+            <ScrollView>
+              {[{ id: null, nome: 'Sem professor' }, ...professores].map(professor => (
+                <Pressable
+                  key={String(professor.id)}
+                  style={styles.option}
+                  onPress={() => {
+                    setProfessorId(professor.id);
+                    setProfessorModal(false);
+                  }}
+                >
+                  <Text>{professor.nome}{professor.id === professorId ? ' ✓' : ''}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable style={styles.option} onPress={() => setProfessorModal(false)}>
+              <Text style={styles.secondaryButtonText}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {!courseReady && (
+        <Pressable style={styles.secondaryButton} onPress={carregarFormulario}>
+          <Text style={styles.secondaryButtonText}>Recarregar dados</Text>
+        </Pressable>
+      )}
+
+      <Pressable
+        style={[styles.button, (!courseReady || saving) && styles.disabled]}
+        disabled={!courseReady || saving}
+        onPress={salvar}
+      >
         <Text style={styles.buttonText}>
           Salvar curso
         </Text>
@@ -194,6 +295,34 @@ export default function AdminCourseScreen({
     </ScrollView>;
 }
 const styles = StyleSheet.create({
+  fieldLabel: {
+    fontWeight: '700',
+    marginBottom: 8
+  },
+  unassigned: {
+    color: '#B45309',
+    fontWeight: '700'
+  },
+  disabled: {
+    opacity: 0.5
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#00000066'
+  },
+  modalPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 18,
+    maxHeight: '80%'
+  },
+  option: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee'
+  },
   container: {
     flex: 1,
     backgroundColor: '#f4f6f8',

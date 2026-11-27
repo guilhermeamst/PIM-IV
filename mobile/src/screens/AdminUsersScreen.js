@@ -103,7 +103,11 @@ export default function AdminUsersScreen({
     }
   }
   function excluir(item) {
-    Alert.alert('Excluir usuário', `Excluir ${item.nome} permanentemente? Matrículas, progresso e outros dados associados podem ser removidos.`, [{
+    const aviso = item.perfil === 'PROFESSOR'
+      ? ' Os cursos serão preservados e ficarão sem professor até uma nova atribuição.'
+      : '';
+
+    Alert.alert('Excluir usuário', `Excluir ${item.nome} permanentemente? Matrículas, progresso e outros dados associados podem ser removidos.${aviso}`, [{
       text: 'Cancelar',
       style: 'cancel'
     }, {

@@ -201,6 +201,10 @@ const s = StyleSheet.create({
     fontSize: 12,
     marginTop: 6
   },
+  unassigned: {
+    color: '#B45309',
+    fontWeight: '700'
+  },
   pill: {
     fontSize: 11,
     color: '#168B55',
@@ -279,7 +283,11 @@ export default function AdminScreen({
       course: item
     })}><View style={{
         flex: 1
-      }}><Text style={s.cardTitle}>{String(item.titulo ?? "Curso")}</Text><Text style={s.cardSub}>{String(item.cargaHoraria ?? 0)}h  •  {String(item.totalAulas ?? 0)} aulas</Text><Text style={[s.pill, !item.ativo && {
+      }}><Text style={s.cardTitle}>{String(item.titulo ?? "Curso")}</Text><Text style={s.cardSub}>{String(item.cargaHoraria ?? 0)}h  •  {String(item.totalAulas ?? 0)} aulas</Text>
+      <Text style={[s.cardSub, item.professorId == null && s.unassigned]}>
+        {item.professorId == null ? 'Sem professor' : `Professor: ${item.professorNome || 'Não identificado'}`}
+      </Text>
+      <Text style={[s.pill, !item.ativo && {
           color: C.muted
         }]}>{item.ativo ? 'Ativo' : 'Inativo'}</Text></View><Ionicons name="chevron-forward" size={21} color={C.muted} /></Pressable>} ListEmptyComponent={!loading && !error ? <View style={s.empty}><Ionicons name="folder-open-outline" size={36} color={C.muted} /><Text style={s.emptyText}>Nenhum curso encontrado.</Text></View> : null} /></SafeAreaView>;
 }
